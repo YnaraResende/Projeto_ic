@@ -1,4 +1,4 @@
-import Rota
+from Rota import *
 from Instancia import *
 
 def main():
@@ -9,10 +9,12 @@ def main():
 	equipes = int(arquivo.readline())
 	atividades = int(arquivo.readline())
 	linha = arquivo.readline()
-	b= Instancia.init(turno,talhoes,equipes,atividades)
-	a=Rota.init()
-	resp = a.CalcularTempo(b)
+	objetoInstancia = Instancia(turno,talhoes,equipes,atividades)
+	objetoRota = Rota()
+	resp = objetoRota.CalcularTempo(objetoInstancia,arquivo)
 	print(resp)
 	arquivo.close()
 	
-main()
+if __name__ == '__main__':
+	main()
+
