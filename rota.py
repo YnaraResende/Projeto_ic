@@ -1,6 +1,7 @@
 import Instancia
 from random import *
-
+from threading import Timer
+import time 
 
 class  Rota:
 		def __init__(self,iinstancia,arquivo):
@@ -77,7 +78,7 @@ class  Rota:
 				iinstancia.custoEquipe.append(elemento)
 			
 			
-		def CalcularRota(self,iinstancia,vetoraux,equipes,dias): #funcao para otimizar custo de equipe de acordo com numero de dias
+		def CalcularRota(self,iinstancia,vetoraux,equipes,dias,arq): #funcao para otimizar custo de equipe de acordo com numero de dias
 			
 			
 			solucao =[]		#matriz que armazena rotas das equipes em cada dia
@@ -100,6 +101,7 @@ class  Rota:
 			talhao = None
 			horaIni = None
 			propExecutada = None
+			tempoOcioso = 0.0
 			
 			for j in range(iinstancia.equipes):		#inicialização da lista listaDias  
 				listaDias.append(0)
@@ -112,7 +114,6 @@ class  Rota:
 					ativ = vetoraux[xis]	#atividade a ser feita	
 					auxiliar= -1
 					indiceAntUm = -1
-					
 						
 					for c,v in self.atividades.items():		 
 						for i in range (0, len(v)):
@@ -152,9 +153,10 @@ class  Rota:
 									if  equipe == equipes[z]:
 										existe = True
 										
-								if temp == 8.0 or existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
-																		#pela mesma equipe
+								if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
 									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+									if temp < 8.0:
+										tempoOcioso= tempoOcioso + (8.0 - temp)
 									
 								self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 								
@@ -168,11 +170,13 @@ class  Rota:
 							for z in range(xis+1, len(vetoraux)):	#para verificar se há atividades a serem feitas pela mesma equipe ainda
 								if  equipe == equipes[z]:
 									existe = True
-							if temp == 8.0 or existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
-																	#pela mesma equipe
+							if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
 								solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+								if temp < 8.0:
+									tempoOcioso= tempoOcioso + (8.0 - temp)
+								
 					
-					else:		#se for não a primeira atividade da sequencia dada no vetoraux
+					else:		#se não for a primeira atividade da sequencia dada no vetoraux
 						
 						for i in range (0, xis):
 							if equipes[i] == equipe:
@@ -207,9 +211,10 @@ class  Rota:
 										for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
 											if  equipe == equipes[z]:
 												existe = True
-										if temp == 8.0 or existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
-																				#pela mesma equipe
+										if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
 											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											if temp < 8.0:
+												tempoOcioso = tempoOcioso + (8.0 - temp)
 										self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 						
 									
@@ -223,9 +228,11 @@ class  Rota:
 									for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
 										if  equipe == equipes[z]:
 											existe = True
-									if temp == 8.0 or existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+									if existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																			#pela mesma equipe
 										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+										if temp < 8.0:
+											tempoOcioso = tempoOcioso + (8.0 - temp)
 					
 							else:	#se não: considera para tempo inicial o tempo final com o tempo deslocamento da atividade feita anteriormente pela equipe e 
 									#tempo de turno e para tempo final considera o tempo da tarefa com o tempo de turno
@@ -235,24 +242,29 @@ class  Rota:
 								tempoGastoAnterior =((iinstancia.tamCliente[talhaoAnt]* iinstancia.tempoPadrao[anterior-1])/iinstancia.profEquipe[equipe-1])*propExecutadaAnt
 								
 								if (solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao])> iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]:
-									solucao[listaDias[equipe-1]][equipe-1].append((0,None,8.0,0))
+									temp = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior+ iinstancia.tempoDeslocamento[talhaoAnt][0]
+									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
 									horaIni = iinstancia.tempoDeslocamento[0][talhao] 
 									self.tempoAtividade[ativ-1][0] = horaIni
+									listaDias[equipe-1] = listaDias[equipe-1]+1	
 									
 									
 								else:
 									horaIni = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
 									self.tempoAtividade[ativ-1][0] = horaIni
-									temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+									#temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
 									
 									
 								if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
 									propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
 									tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-									solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-									temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+									if listaDias[equipe-1] < iinstancia.dias: 
+										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+										temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+									
 									listaDias[equipe-1] = listaDias[equipe-1]+1	
+									
 									if listaDias[equipe-1]< iinstancia.dias:		
 										horaIni= iinstancia.tempoDeslocamento[0][talhao]
 										propExecutada= 1- propExecutada		
@@ -265,24 +277,30 @@ class  Rota:
 											if  equipe == equipes[z]:
 												existe = True
 												
-										if temp == 8.0 or existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+										if existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																				#pela mesma equipe
 											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											if temp < 8.0:
+												tempoOcioso = tempoOcioso + (8.0 - temp)
+											
 									
 										self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 								
 								else:
-									solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
-									self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
-									temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
-									existe = False
-										
-									for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
-										if  equipe == equipes[z]:
-											existe = True
-									if temp == 8.0 or existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
-																			#pela mesma equipe
-										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+									if listaDias[equipe-1]< iinstancia.dias:
+										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
+										self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
+										temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+										existe = False
+											
+										for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
+											if  equipe == equipes[z]:
+												existe = True
+										if existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+																				#pela mesma equipe
+											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											if temp < 8.0:
+												tempoOcioso = tempoOcioso + (8.0 - temp)
 						
 						else:	#se a atividade não for a primeira a ser realizada no talhao	
 							
@@ -298,6 +316,7 @@ class  Rota:
 						
 								self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior2-1][1]
 								horaIni = self.tempoAtividade[ativ-1][0]
+								tempoOcioso = tempoOcioso + max((self.tempoAtividade[anterior2-1][1]- iinstancia.tempoDeslocamento[0][talhao]),0)
 									
 								if horaIni+ tempoTarefa > (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]): 
 									
@@ -318,11 +337,14 @@ class  Rota:
 										
 										for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
 											if  equipe == equipes[z]:
+												
 												existe = True
 												
-										if temp == 8.0 or existe == False :			#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+										if existe == False :			#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																					#pela mesma equipe
 											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											if temp < 8.0:
+												tempoOcioso =  tempoOcioso + (8.0 -temp)
 									
 										self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 									
@@ -338,9 +360,11 @@ class  Rota:
 										if  equipe == equipes[z]:
 											existe = True
 											
-									if temp == 8.0 or existe == False :			#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+									if existe == False :			#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																				#pela mesma equipe
 										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+										if temp < 8.0:
+											tempoOcioso =  tempoOcioso + (8.0 -temp)
 					
 							else: 
 								
@@ -348,7 +372,8 @@ class  Rota:
 															#atividade feita pela equipe anteriormente e tempo final considera  tempo de turno
 							
 									self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior-1][1]
-									horaIni= self.tempoAtividade[ativ-1][0] 
+									horaIni= self.tempoAtividade[ativ-1][0]
+									 
 						
 									if horaIni + tempoTarefa> (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]): 
 					
@@ -371,9 +396,11 @@ class  Rota:
 												if  equipe == equipes[z]:
 													existe = True
 													
-											if temp == 8.0 or existe == False:			#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+											if existe == False:			#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																						#pela mesma equipe
 												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+												if temp < 8.0:
+													tempoOcioso =  tempoOcioso + (8.0 -temp)
 									
 											self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 									
@@ -387,9 +414,11 @@ class  Rota:
 											if  equipe == equipes[z]:
 												existe = True
 												
-										if temp == 8.0 or existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+										if existe == False :		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																				#pela mesma equipe
 											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											if temp < 8.0:
+												tempoOcioso =  tempoOcioso + (8.0 -temp)
 										
 							
 								else:	#se não: considera como tempo inicial o maior tempo entre o tempo final da atividade realizada anteriormente pela equipe
@@ -404,7 +433,9 @@ class  Rota:
 										propExecutadaAnt = solucao[listaDias[equipe-1]][equipe-1][-1][-1]
 										tempoGastoAnterior =((iinstancia.tamCliente[talhaoAnt]* iinstancia.tempoPadrao[anterior-1])/iinstancia.profEquipe[equipe-1])*propExecutadaAnt
 										if (solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao])> iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]:
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,8.0,0))
+											temp = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][0]
+											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											listaDias[equipe-1] = listaDias[equipe-1]+1	 
 											horaIni = iinstancia.tempoDeslocamento[0][talhao] 
 											self.tempoAtividade[ativ-1][0] = horaIni
 											
@@ -417,10 +448,13 @@ class  Rota:
 										if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
 											propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
 											tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-											solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-											temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											if listaDias[equipe-1] < iinstancia.dias:
+												solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+												temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											
 											listaDias[equipe-1] = listaDias[equipe-1]+1	
+											
 											if listaDias[equipe-1]< iinstancia.dias:		
 												horaIni= iinstancia.tempoDeslocamento[0][talhao]
 												propExecutada= 1- propExecutada		
@@ -429,32 +463,42 @@ class  Rota:
 												temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
 												
 												existe = False
-										
+												
+												
+												
 												for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
-													if  equipe == equipes[z]:
+													if  equipe == equipes[z]:	
+														
 														existe = True
 														
-												if temp == 8.0 or existe==False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
+												if existe==False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas
 																						#pela mesma equipe
 													solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+													if temp < 8.0:
+														tempoOcioso =  tempoOcioso + (8.0 -temp)
+													
 												self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 									
 										else:
-											solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
-											temp = horaIni + tempoTarefa + iinstancia.tempoDeslocamento[0][talhao]
-											existe = False
-										
-											for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
-												if  equipe == equipes[z]:
-													existe = True
-											if temp == 8.0 or existe==False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas	
-																					#pela mesma equipe
-												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-											self.tempoAtividade[ativ-1][1] = horaIni+ tempoTarefa
+											if listaDias[equipe-1] < iinstancia.dias:
+												solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
+												temp = horaIni + tempoTarefa + iinstancia.tempoDeslocamento[0][talhao]
+												existe = False
+											
+												for z in range(xis+1, len(vetoraux)):		#para verificar se há atividades a serem feitas pela mesma equipe ainda
+													if  equipe == equipes[z]:
+														existe = True
+												if existe==False:		#se  não há atividades a serem feitas pela mesma equipe
+													solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+													if temp < 8.0:
+														tempoOcioso =  tempoOcioso + (8.0 -temp)
+												self.tempoAtividade[ativ-1][1] = horaIni+ tempoTarefa
 								
 									else:
 										self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior2-1][1]
 										horaIni = self.tempoAtividade[ativ-1][0]
+										tempoChegada = self.tempoAtividade[anterior-1][1] + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
+										tempoOcioso = tempoOcioso + max((self.tempoAtividade[anterior2-1][1]- tempoChegada),0)
 										
 										if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
 											propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
@@ -475,9 +519,11 @@ class  Rota:
 													if  equipe == equipes[z]:
 														existe = True
 														
-												if temp == 8.0 or existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas	
+												if existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas	
 																						#pela mesma equipe
 													solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+													if temp < 8.0:
+														tempoOcioso = tempoOcioso + (8.0-temp)
 												self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 										
 										else:
@@ -488,38 +534,64 @@ class  Rota:
 											for z in range(xis+1, len(vetoraux)):	#para verificar se há atividades a serem feitas pela mesma equipe ainda
 												if  equipe == equipes[z]:
 													existe = True
-											if temp == 8.0 or existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas	
+											if existe == False:		#se o tempo de turno foi esgotado ou se  não há atividades a serem feitas	
 																					#pela mesma equipe
 												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+												if temp < 8.0:
+													tempoOcioso =  tempoOcioso + (8.0 -temp)
+												
 											self.tempoAtividade[ativ-1][1] = horaIni+tempoTarefa
 				
 			custoTotal = 0.0
-			print("------------------------------")
+			tempoUltra = 0.0
+			maiorCusto = 0.0
+			for j in iinstancia.custoEquipe:
+				if j > maiorCusto:
+					maiorCusto = j
+			penalidade = 3 * maiorCusto
+			arq.write("------------------------------\n")
+			arq.write(str(vetoraux))
+			arq.write("\n")
 			for dia in range(len(solucao)):
 				prim = 0
-				for equipe in range(len(solucao[dia])):
-					if(len(solucao[dia][equipe])>1):
+				for equi in range(len(solucao[dia])):
+					if(len(solucao[dia][equi])>1):
 						if prim == 0 :
-							print('dia', dia)
+							arq.write('dia')
+							arq.write(str(dia))
+							arq.write("\n")
 							prim = 1	
-						print('    Equipe', equipe, end = '->')
-						print(solucao[dia][equipe]) 
-						custoTotal= custoTotal + iinstancia.custoEquipe[equipe] 
-						
+						arq.write('    Equipe')
+						arq.write(str(equi))
+						arq.write('->')
+						arq.write(str(solucao[dia][equi])) 
+						arq.write("\n")
+						tempoUltra= tempoUltra + max( ((solucao[dia][equi][(len(solucao[dia][equi]))-1][2]) - 8),0)
+						custoTotal= custoTotal + iinstancia.custoEquipe[equi] 
+			arq.write("\n")
+			custoTotal= custoTotal + (tempoUltra * penalidade) + tempoOcioso
+			arq.write(str(custoTotal))
+			arq.write("\n")
 			
 			
 			return(custoTotal)
+	
+		def Fim(self):
+			exit()
 			
-					
-				
-				
-		def BRKGA(self,iinstancia):	#funcao para gerar sequencia de atividades aleatorias
+		
+		def BRKGA(self,iinstancia,arq):	#funcao para gerar sequencia de atividades aleatorias
 			
 			reini=0		#variavel de controle 
 			k = iinstancia.equipes			#numero de equipes
 			n = iinstancia.numAtividades	#numero de atividades
-			
+			fim = 0.0
+			inicio = time.time()
+						
 			while reini < 100 :
+			
+				if fim - inicio >= 1800.0:
+					Rota.Fim(self)
 					
 				novaPopulacao=[]
 				equipes = []
@@ -573,7 +645,7 @@ class  Rota:
 								if vetoraux[j] == novaPopulacao[i][b]:
 									vetoraux[j]= b+1
 						
-						resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias)		#calcula custo de rota das equipes de acordo com numero 
+						resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias,arq)		#calcula custo de rota das equipes de acordo com numero 
 																											# de dias dado e sequencia de atividades dada pelo vetoraux
 						custos.append(float(resul))		
 					
@@ -692,7 +764,7 @@ class  Rota:
 												vetoraux[b] = indiceSeg+1
 												
 								
-								resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias)		#calcula custo de rota das equipes de acordo com numero 
+								resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias,arq)		#calcula custo de rota das equipes de acordo com numero 
 																													# de dias dado e sequencia de atividades dada pelo vetoraux
 								
 								if resul > maior:
@@ -827,7 +899,7 @@ class  Rota:
 												vetoraux[j]= b+1
 									
 									
-									resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias)	#calcula custo de rota das equipes de acordo com numero 
+									resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias,arq)	#calcula custo de rota das equipes de acordo com numero 
 																													# de dias dado e sequencia de atividades dada pelo vetoraux
 								
 									if resul > maior:
@@ -864,7 +936,7 @@ class  Rota:
 								if vetoraux[j] == novaPopulacao[i][b]:
 									vetoraux[j]= b+1
 						
-						resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias)		#calcula custo de rota das equipes de acordo com numero 
+						resul = Rota.CalcularRota(self,iinstancia,vetoraux,equipes[i],iinstancia.dias,arq)		#calcula custo de rota das equipes de acordo com numero 
 																											# de dias dado e sequencia de atividades dada pelo vetoraux
 						#armazena menor vetor da populacao atual com menor custo
 						if (resul<m) or m == -1:	
@@ -896,4 +968,6 @@ class  Rota:
 				#comparar o self.resposta
 				if respAnterior!= -1 and respAnterior < self.resposta:
 					self.resposta = respAnterior
+					
+				fim = time.time()
 			return(self.resposta)		
