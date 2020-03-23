@@ -590,7 +590,7 @@ class  Rota:
 						
 			while reini < 100 :
 			
-				if fim - inicio >= 1800.0:
+				if fim - inicio >= 300.0:
 					Rota.Fim(self)
 					
 				novaPopulacao=[]
