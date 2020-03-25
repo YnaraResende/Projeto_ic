@@ -1,4 +1,4 @@
-import Instancia
+import instancia
 from random import *
 from threading import Timer
 import time 
@@ -77,9 +77,15 @@ class  Rota:
 				elemento=float(espaco[i])
 				iinstancia.custoEquipe.append(elemento)
 			
-			
+		
+        ''''
+         Parâmetros:
+            - iinstancia: sldksldksld
+            - vetoraux: skdsdksld
+            .....
+         Ideia: a função Blabasa calcula a sdks. Primeiramente, sdsd, dksdksdskd, etc etc ...
+        '''
 		def CalcularRota(self,iinstancia,vetoraux,equipes,dias,arq): #funcao para otimizar custo de equipe de acordo com numero de dias
-			
 			
 			solucao =[]		#matriz que armazena rotas das equipes em cada dia
 			listaDias=[]	#lista do tamanho do numero de equipes para armazenar o dia atual de cada equipe
@@ -112,15 +118,23 @@ class  Rota:
 	
 				if listaDias[equipe-1] < iinstancia.dias:	#se o dia atual da equipe for menor que o numero de dias dado 
 					ativ = vetoraux[xis]	#atividade a ser feita	
+					print(ativ)
 					auxiliar= -1
 					indiceAntUm = -1
-						
-					for c,v in self.atividades.items():		 
-						for i in range (0, len(v)):
-							if self.atividades[c][i] == ativ:
-								auxiliar=i
-								talhao=c
-					
+                    continua = True
+					for c,v in self.atividades.items():
+                        if(continua):
+						    for i in range (0, len(v)):
+                                if(continua):
+							        if self.atividades[c][i] == ativ:
+								        auxiliar=i
+								        talhao=c
+                                        continua = False
+                                        break
+
+                        else
+                            break                                   
+            		
 					#calculo do tempo de realização da atividade 				
 					tempoTarefa = (iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1]
 				

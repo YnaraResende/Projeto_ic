@@ -1,18 +1,18 @@
- 1) Na minha máquina, se eu dou um import Instance, não compila. Eu tenho que dar um import instance, pois o nome do arquivo que contém a classe é instance, e não Instance.
+1) Na minha máquina, se eu dou um import Instance, não compila. Eu tenho que dar um import instance, pois o nome do arquivo que contém a classe é instance, e não Instance.
 
 2) Ao meu ver, conceitualmente, a classe Rota tem uma ideia diferente do algoritmo. A rota é a sequência de atividades seguida por uma equipe. Já o BRKGA é um algoritmo. Na minha opinião, essas duas classes devem ser distintas, implementadas em arquivos diferentes.
 
-3) Outra sugestão: os inputs "Tempo_viagem_regioes", "Tempo_padrao_atividades", "Proficiencia_equipes", "Tamanho_cliente" e "Custo_equipes" devem fazer parte da classe Instance, pois são dados do problema, independentes do algoritmo a ser implementado.
+3) Outra sugestão: os inputs "Tempo_viagem_regioes", "Tempo_padrao_atividades", "Proficiencia_equipes", "Tamanho_cliente" e "Custo_equipes" devem fazer parte da classe Instancia, pois são dados do problema, independentes do algoritmo a ser implementado.
 
 4) O valor que o tempo que a atividade i é executada no talhão v pela equipe k, poderia ser calculado na medida que o arquivo seja lido.
 
 5) Na verdade, a ideia da função CalculaRota não é "funcao para otimizar custo de equipe de acordo com numero de dias", e sim calcular "calcular o número de dias gastos para que a designação de atividades a equipes, respeitando a precedência de atividades e o número máximo de horas para o turno."
 
-6) Especificar os parâmetros da função "CalcularRota(self,iinstancia,vetoraux,equipes,dias,arq)".
+6) Especificar os parâmetros da função "CalcularRota(self,iinstancia,vetoraux,equipes,dias,arq)". Inserir o arq "log" como membro da classe Rota, pois com isso, você tem o acesso direto ao atributo.
 
 7) Explique a "CalculaRota" novamente.
 
-8) Dúvida: "equipes[xis]" retorna a equipe que executa a atividade "xis"?
+8) Dúvida: "equipes[xis]" retorna a equipe que executa a atividade na posição "xis"?
 
 9) Por que a estrutura "self.atividades = {1: [1, 4], 2: [2, 3], 3: []}" tem uma lista vazia de índice 3, já que o talhão 3 não existe?
 
