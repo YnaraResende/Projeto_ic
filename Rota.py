@@ -23,7 +23,7 @@ class  Rota:
 		def CalcularRota(self,iinstancia,vetoraux,equipes,dias): 
 			
 			solucao =[]		#matriz que armazena rotas das equipes em cada dia
-			listaDias=[]	#lista do tamanho do numero de equipes para armazenar o dia atual de cada equipe
+			listaDias=[]	#lista do tamanho do numero de atividades para armazenar o dia atual de cada atividade
 			existe = False	#booleano para controle
 			
 			#inicialização da matriz solucao com a tupla que representa o depósito
@@ -42,7 +42,7 @@ class  Rota:
 			propExecutada = None	#proporção executada da atividade
 			tempoOcioso = 0.0		#tempo de ociosidade das equipes 
 			
-			for j in range(iinstancia.equipes):		#inicialização da lista listaDias  
+			for j in range(iinstancia.numAtividades):		#inicialização da lista listaDias  
 				listaDias.append(0)
 						
 			for i in range (0, iinstancia.numAtividades):    #inicialização self.tempoAtividade
@@ -54,389 +54,440 @@ class  Rota:
 			for xis in range(0, len(vetoraux)):
 				equipe = equipes[xis]	#equipe correspondente a atividade atual
 	
-				if listaDias[equipe-1] < iinstancia.dias:	#se o dia atual da equipe for menor que o número de dias dado 
 				
-					ativ = vetoraux[xis]		
-					auxiliar= -1
-					indiceAntUm = -1
+				ativ = vetoraux[xis]		
+				auxiliar= -1
+				indiceAntUm = -1
 						
-					continuar = True
+				continuar = True
 					
-					#para descobrir a qual talhão a atividade atual pertence e sua posição nele
-					for c,v in iinstancia.atividades.items():	
-						if continuar:	 
-							for i in range (0, len(v)):
-								if continuar:
-									if iinstancia.atividades[c][i] == ativ:
-										auxiliar=i
-										talhao=c+1
-										continuar = False
-										break
-						else:
-							break
+				#para descobrir a qual talhão a atividade atual pertence e sua posição nele
+				for c,v in iinstancia.atividades.items():	
+					if continuar:	 
+						for i in range (0, len(v)):
+							if iinstancia.atividades[c][i] == ativ:
+								auxiliar=i
+								talhao=c+1
+								continuar = False
+								break
+					else:
+						break
 					
 					
-							
-					tempoTarefa = iinstancia.tempoTarefa[ativ-1][equipe-1]
+				tempoTarefa = iinstancia.tempoTarefa[ativ-1][equipe-1]
 					
-					existe = False
+				existe = False
 								
-					for z in range(xis+1, len(vetoraux)):	#para verificar se há atividades a serem feitas pela mesma equipe ainda
-						if  equipe == equipes[z]:
-							existe = True
-							break
+				for z in range(xis+1, len(vetoraux)):	#para verificar se há atividades a serem feitas pela mesma equipe ainda
+					if  equipe == equipes[z]:
+						existe = True
+						break
 					
 				
-					#se for a primeira atividade do vetoraux: tempo inicial recebe tempo de deslocamento do depósito e tempo final considera turno
-					if xis == 0: 
+				#se for a primeira atividade do vetoraux: tempo inicial recebe tempo de deslocamento do depósito e tempo final considera turno
+				if xis == 0: 
 						
-						horaIni = iinstancia.tempoDeslocamento[0][talhao] 	
-						self.tempoAtividade[ativ-1][0] = horaIni
+					horaIni = iinstancia.tempoDeslocamento[0][talhao] 	
+					self.tempoAtividade[ativ-1][0] = horaIni
 						
-						if horaIni + tempoTarefa > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]): 
-							propExecutada= (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao] - horaIni)/tempoTarefa
-							tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
+					if horaIni + tempoTarefa > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]): 
+						
+						propExecutada= (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao] - horaIni)/tempoTarefa
+						tempoGasto=tempoTarefa*propExecutada		
+						solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+						temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+						solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))	
+						listaDias[ativ-1] = listaDias[ativ-1] +1	
 							
-							solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+						if listaDias[ativ-1] < iinstancia.dias:	#se nao ultrapassou o numero de dias dado	
+								
+							propExecutada= 1- propExecutada		
+							tempoGasto=tempoTarefa-tempoGasto
+							solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
 							temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-							solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-							
-							listaDias[equipe-1] = listaDias[equipe-1] +1	
-							
-							if listaDias[equipe-1] < iinstancia.dias:	#se nao ultrapassou o numero de dias dado	
-								
-								propExecutada= 1- propExecutada		
-								tempoGasto=tempoTarefa-tempoGasto
-								
-								solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-								temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
 										
-								if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
-									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-									if temp < 8.0:
-										tempoOcioso= tempoOcioso + (8.0 - temp)
-									
-								self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
-								
-						else:
-							
-							solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
-							self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
-							temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
-							
-							if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
-								solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+							if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
+								solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 								if temp < 8.0:
 									tempoOcioso= tempoOcioso + (8.0 - temp)
+									
+							self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
+								
+					else:
+							
+						solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+						self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
+						temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+							
+						if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
+							solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+							if temp < 8.0:
+								tempoOcioso= tempoOcioso + (8.0 - temp)
 								
 					
-					else:		#se não for a primeira atividade da sequência dada no vetoraux
+				else:		#se não for a primeira atividade da sequência dada no vetoraux
 						
-						#para armazenar -1 se a atividade é a primeira a ser feita pela equipe ou o índice da atividade feita anteriormente pela equipe
-						for i in range (0, xis):	
-							if equipes[i] == equipe:
-								anterior = vetoraux[i]
-								indiceAntUm= i
-								break
-						
-						
-								
-						if auxiliar == 0:	#se a atividade for a primeira a ser realizada no talhao correspondente 
-				
-							#se a atividade for a primeira a ser realizada pela equipe correspondente: tempo inicial recebe tempo de deslocamento do 
-							#deposito e para tempo final considera tempo de turno
-							if indiceAntUm == -1:	
+					#para armazenar -1 se a atividade é a primeira a ser feita pela equipe ou o índice da atividade feita anteriormente pela equipe
+					for i in range (0, xis):	
+						if equipes[i] == equipe:
+							anterior = vetoraux[i]
+							indiceAntUm= i
 													
-								horaIni = iinstancia.tempoDeslocamento[0][talhao] 	
-								self.tempoAtividade[ativ-1][0] = horaIni
+					if auxiliar == 0:	#se a atividade for a primeira a ser realizada no talhao correspondente 
+				
+						#se a atividade for a primeira a ser realizada pela equipe correspondente: tempo inicial recebe tempo de deslocamento do 
+						#deposito e para tempo final considera tempo de turno
+						if indiceAntUm == -1:	
+													
+							horaIni = iinstancia.tempoDeslocamento[0][talhao] 	
+							self.tempoAtividade[ativ-1][0] = horaIni
 							
-								if horaIni + tempoTarefa > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]): 
-									propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
-									tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-									solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-									temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-									listaDias[equipe-1] = listaDias[equipe-1]+1	
+							if horaIni + tempoTarefa > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]): 
+								propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
+								tempoGasto=tempoTarefa*propExecutada
+								solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+								temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+								solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+								listaDias[ativ-1] = listaDias[ativ-1]+1	
 									
-									if listaDias[equipe-1]< iinstancia.dias:		#se nao ultrapassou o numero de dias dado
+								if listaDias[ativ-1]< iinstancia.dias:		#se nao ultrapassou o numero de dias dado
 								
-										propExecutada= 1- propExecutada		
-										tempoGasto=tempoTarefa-tempoGasto
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-										temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+									propExecutada= 1- propExecutada		
+									tempoGasto=tempoTarefa-tempoGasto
+									solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+									temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
 										
-										if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-											if temp < 8.0:
-												tempoOcioso = tempoOcioso + (8.0 - temp)
-										self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
-						
-									
-								else:
-									
-									solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
-									self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
-									temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
-									
-									if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
-										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+									if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
+										solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 										if temp < 8.0:
 											tempoOcioso = tempoOcioso + (8.0 - temp)
+									self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
+						
+									
+							else:
+									
+								solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+								self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa	
+								temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+									
+								if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
+									solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+									if temp < 8.0:
+										tempoOcioso = tempoOcioso + (8.0 - temp)
 					
-							else:	#se não: considera para tempo inicial o tempo final com o tempo deslocamento da atividade feita anteriormente pela 
+						else:	#se não: considera para tempo inicial o tempo final com o tempo deslocamento da atividade feita anteriormente pela 
 									#equipe e tempo de turno e para tempo final considera o tempo da tarefa com o tempo de turno
-									
-								talhaoAnt= solucao[listaDias[equipe-1]][equipe-1][-1][0]
-								propExecutadaAnt = solucao[listaDias[equipe-1]][equipe-1][-1][-1]
-								tempoGastoAnterior =((iinstancia.tamCliente[talhaoAnt]* iinstancia.tempoPadrao[anterior-1])/iinstancia.profEquipe[equipe-1])*propExecutadaAnt
 								
-								if (solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao])> iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]:
-									temp = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior+ iinstancia.tempoDeslocamento[talhaoAnt][0]
-									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-									horaIni = iinstancia.tempoDeslocamento[0][talhao] 
-									self.tempoAtividade[ativ-1][0] = horaIni
-									listaDias[equipe-1] = listaDias[equipe-1]+1	
+							listaDias[ativ-1] = listaDias[anterior-1]	
+							talhaoAnt= solucao[listaDias[anterior-1]][equipe-1][-1][0]
+							propExecutadaAnt = solucao[listaDias[anterior-1]][equipe-1][-1][-1]
+							tempoGastoAnterior =(iinstancia.tempoTarefa[anterior-1][equipe-1])*propExecutadaAnt
+								
+								
+							if (solucao[listaDias[anterior-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao])> iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]:
+								temp = solucao[listaDias[anterior-1]][equipe-1][-1][2]+ tempoGastoAnterior+ iinstancia.tempoDeslocamento[talhaoAnt][0]
+								solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+								horaIni = iinstancia.tempoDeslocamento[0][talhao] 
+								self.tempoAtividade[ativ-1][0] = horaIni
+								listaDias[ativ-1] = listaDias[ativ-1]+1	
 									
 									
-								else:
-									horaIni = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
-									self.tempoAtividade[ativ-1][0] = horaIni
-									#temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+							else:
+								horaIni = solucao[listaDias[anterior-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
+								self.tempoAtividade[ativ-1][0] = horaIni
 									
-									
-								if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
-									propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
-									tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-									if listaDias[equipe-1] < iinstancia.dias: 
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+							if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
+								propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
+								tempoGasto=tempoTarefa*propExecutada
+								
+								if listaDias[ativ-1] < iinstancia.dias: 		
+									if listaDias[ativ-1]+1 < iinstancia.dias:
+								 
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
 										temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-									
-									listaDias[equipe-1] = listaDias[equipe-1]+1	
-									
-									if listaDias[equipe-1]< iinstancia.dias:		
+										solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+										listaDias[ativ-1] = listaDias[ativ-1]+1			
 										horaIni= iinstancia.tempoDeslocamento[0][talhao]
 										propExecutada= 1- propExecutada		
 										tempoGasto=tempoTarefa-tempoGasto
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
 										temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-										
+											
 										#se  não há atividades a serem feitas pela mesma equipe ou se o tempo e os dias foram esgotados 
-										if (existe == False) or (temp > 8.0 and listaDias[equipe-1]+1 >= iinstancia.dias) :		
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+										if (existe == False) or (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias) :		
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 											if temp < 8.0:
 												tempoOcioso = tempoOcioso + (8.0 - temp)
-												
-											elif (temp > 8.0 and listaDias[equipe-1]+1 >= iinstancia.dias):
-												listaDias[equipe-1] = listaDias[equipe-1] + 1
+													
+											elif (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias):
+												listaDias[ativ-1] = listaDias[ativ-1] + 1
 											
-									
 										self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
+											
+									else:
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+										temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+										solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+										listaDias[ativ-1]=listaDias[ativ-1]+1
 								
 								else:
-									if listaDias[equipe-1]< iinstancia.dias:
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
+									if listaDias[ativ-1]< iinstancia.dias:
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
 										self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
 										temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
 										
 										if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 											if temp < 8.0:
 												tempoOcioso = tempoOcioso + (8.0 - temp)
 						
-						else:	#se a atividade não for a primeira a ser realizada no talhao	
+					else:	#se a atividade não for a primeira a ser realizada no talhao	
 							
-							anterior2 = iinstancia.atividades[talhao-1][auxiliar-1] 	
+						anterior2 = iinstancia.atividades[talhao-1][auxiliar-1] 	
 							
-							#se a atividade for a primeira a ser realizada pela equipe correspondente: para tempo inicial recebe tempo final da ultima 
-							#atividade feita no talhao e para tempo final considera tempo de turno
-							if indiceAntUm == -1:	
+						#se a atividade for a primeira a ser realizada pela equipe correspondente: para tempo inicial recebe tempo final da ultima 
+						#atividade feita no talhao e para tempo final considera tempo de turno
+						if indiceAntUm == -1:	
 													
+							listaDias[ativ-1] = listaDias[anterior2-1]
 								
-								if self.tempoAtividade[anterior2-1][1] < 8.0 :
-									self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior2-1][1]
-									horaIni = self.tempoAtividade[ativ-1][0]
-								else:
-									horaIni = iinstancia.tempoDeslocamento[0][talhao]
-								tempoOcioso = tempoOcioso + max((self.tempoAtividade[anterior2-1][1]- iinstancia.tempoDeslocamento[0][talhao]),0)
+							if self.tempoAtividade[anterior2-1][1] < 8.0 :
+								self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior2-1][1]
+								horaIni = self.tempoAtividade[ativ-1][0]
+							else:
+								#colocar condição para caso entrar aqui aumentar o dia
+								listaDias[ativ-1] = listaDias[ativ-1] + 1
+								horaIni = iinstancia.tempoDeslocamento[0][talhao]
+							tempoOcioso = tempoOcioso + max((self.tempoAtividade[anterior2-1][1]- iinstancia.tempoDeslocamento[0][talhao]),0)
 									
-								if horaIni+ tempoTarefa > (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]): 
+							if horaIni+ tempoTarefa > (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]): 
 									
-									propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
-									tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-									
-									solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-									temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-									solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-									listaDias[equipe-1] = listaDias[equipe-1]+1	
-									if listaDias[equipe-1]< iinstancia.dias:		
+								propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
+								tempoGasto=tempoTarefa*propExecutada
+								if listaDias[ativ-1] < iinstancia.dias:
+									if listaDias[ativ-1]+1 < iinstancia.dias:
+										
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+										temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+										solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+										listaDias[ativ-1] = listaDias[ativ-1]+1	
 										horaIni= iinstancia.tempoDeslocamento[0][talhao]
 										propExecutada= 1- propExecutada		
 										tempoGasto=tempoTarefa-tempoGasto
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
 										temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
 										
-										if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+										#se  não há atividades a serem feitas pela mesma equipe ou se o tempo e os dias foram esgotados
+										if (existe == False) or (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias) :		
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 											if temp < 8.0:
 												tempoOcioso =  tempoOcioso + (8.0 -temp)
-									
+											elif (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias):
+												listaDias[ativ-1] = listaDias[ativ-1] + 1
+												
 										self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 									
-								
+									else:
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))	
+										temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+										solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+										listaDias[ativ-1]=listaDias[ativ-1]+1
 									
-								else:
+							else:
+								if listaDias[ativ-1] < iinstancia.dias:
 									self.tempoAtividade[ativ-1][1] = self.tempoAtividade[ativ-1][0] + tempoTarefa
-									solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
+									solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
 									temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
-									
+										
 									if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
-										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+										solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 										if temp < 8.0:
 											tempoOcioso =  tempoOcioso + (8.0 -temp)
 					
-							else: 
+						else: 
 								
-								if anterior == anterior2:	#se anterior da equipe correspondente for do mesmo talhao: tempo inicial recebe tempo final da 
+							if anterior == anterior2:	#se anterior da equipe correspondente for do mesmo talhao: tempo inicial recebe tempo final da 
 															#atividade feita pela equipe anteriormente e tempo final considera  tempo de turno
-							
-									self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior-1][1]
-									horaIni= self.tempoAtividade[ativ-1][0]
+									
+								listaDias[ativ-1]=listaDias[anterior-1]
+								self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior-1][1]
+								horaIni= self.tempoAtividade[ativ-1][0]
 									 
 						
-									if horaIni + tempoTarefa> (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]): 
+								if horaIni + tempoTarefa> (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]): 
 					
-										propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
-										tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
+									propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
+									tempoGasto=tempoTarefa*propExecutada
 										
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-										temp =horaIni + tempoGasto + iinstancia.tempoDeslocamento[0][talhao]
-										solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-										listaDias[equipe-1] = listaDias[equipe-1]+1	
-										if listaDias[equipe-1] < iinstancia.dias:		
+									if listaDias[ativ-1] < iinstancia.dias:
+										if listaDias[ativ-1] + 1< iinstancia.dias:
+											solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+											temp =horaIni + tempoGasto + iinstancia.tempoDeslocamento[0][talhao]
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+											listaDias[ativ-1] = listaDias[ativ-1]+1		
 											horaIni= iinstancia.tempoDeslocamento[0][talhao]
 											propExecutada= 1- propExecutada		
 											tempoGasto=tempoTarefa-tempoGasto
-											solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+											solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
 											temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-											
-											if existe == False:			#se  não há atividades a serem feitas pela mesma equipe
-												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+												
+											#se  não há atividades a serem feitas pela mesma equipe ou se o tempo e os dias foram esgotados 
+											if (existe == False) or (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias) :
+												solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 												if temp < 8.0:
 													tempoOcioso =  tempoOcioso + (8.0 -temp)
-									
+													
+												elif (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias):
+													listaDias[ativ-1] = listaDias[ativ-1] + 1
+										
 											self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
+												
+										else:
+											solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+											temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+											listaDias[ativ-1] = listaDias[ativ-1]+1
 									
-									else:
+								else:
+									if listaDias[ativ-1] < iinstancia.dias:
 										self.tempoAtividade[ativ-1][1] = self.tempoAtividade[ativ-1][0] + tempoTarefa
-										solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
+										solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
 										temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
-											
+												
 										if existe == False :	#se  não há atividades a serem feitas pela mesma equipe
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 											if temp < 8.0:
 												tempoOcioso =  tempoOcioso + (8.0 -temp)
 										
-								#se não: considera como tempo inicial o maior tempo entre: o tempo final da atividade realizada anteriormente pela equipe
-								# + o deslocamento e o tempo final da atividade anterior do talhao, levando em conta o tempo de turno para o tempo 
-								#inicial e final
-								else:
+							#se não: considera como tempo inicial o maior tempo entre: o tempo final da atividade realizada anteriormente pela equipe
+							# + o deslocamento e o tempo final da atividade anterior do talhao, levando em conta o tempo de turno para o tempo 
+							#inicial e final
+							else:
+								if listaDias[anterior-1] < iinstancia.dias:		
+									talhaoAnt= solucao[listaDias[anterior-1]][equipe-1][-1][0]
+									propExecutadaAnt = solucao[listaDias[anterior-1]][equipe-1][-1][-1]
+									tempoGastoAnterior =(iinstancia.tempoTarefa[anterior-1][equipe-1])*propExecutadaAnt
 										
-									talhaoAnt= solucao[listaDias[equipe-1]][equipe-1][-1][0]
-									propExecutadaAnt = solucao[listaDias[equipe-1]][equipe-1][-1][-1]
-									tempoGastoAnterior =((iinstancia.tamCliente[talhaoAnt]* iinstancia.tempoPadrao[anterior-1])/iinstancia.profEquipe[equipe-1])*propExecutadaAnt
-									
-									if self.tempoAtividade[anterior-1][1] + iinstancia.tempoDeslocamento[talhaoAnt][talhao] > self.tempoAtividade[anterior2-1][1]:
-								
-										propExecutadaAnt = solucao[listaDias[equipe-1]][equipe-1][-1][-1]
-										tempoGastoAnterior =((iinstancia.tamCliente[talhaoAnt]* iinstancia.tempoPadrao[anterior-1])/iinstancia.profEquipe[equipe-1])*propExecutadaAnt
-										if (solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao])> iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]:
-											temp = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][0]
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-											listaDias[equipe-1] = listaDias[equipe-1]+1	 
+									if (((self.tempoAtividade[anterior-1][1] + iinstancia.tempoDeslocamento[talhaoAnt][talhao]) > self.tempoAtividade[anterior2-1][1]) and (listaDias[anterior-1]==listaDias[anterior2-1])) or (listaDias[anterior-1] > listaDias[anterior2-1]) :
+												
+										listaDias[ativ-1]=listaDias[anterior-1]
+												
+										if (solucao[listaDias[anterior-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao])> iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]:
+											temp = solucao[listaDias[anterior-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][0]
+											solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+											listaDias[ativ-1] = listaDias[ativ-1]+1	 
 											horaIni = iinstancia.tempoDeslocamento[0][talhao] 
 											self.tempoAtividade[ativ-1][0] = horaIni
-											
-											
+													
+													
 										else:
-											horaIni = solucao[listaDias[equipe-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
+											horaIni = solucao[listaDias[anterior-1]][equipe-1][-1][2]+ tempoGastoAnterior + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
 											self.tempoAtividade[ativ-1][0]= horaIni
-											
-											
+													
+													
 										if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
 											propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
-											tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-											if listaDias[equipe-1] < iinstancia.dias:
-												solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-												temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-											
-											listaDias[equipe-1] = listaDias[equipe-1]+1	
-											
-											if listaDias[equipe-1]< iinstancia.dias:		
-												horaIni= iinstancia.tempoDeslocamento[0][talhao]
-												propExecutada= 1- propExecutada		
-												tempoGasto=tempoTarefa-tempoGasto
-												solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-												temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-														
-												if existe==False:		#sse  não há atividades a serem feitas pela mesma equipe
-													solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-													if temp < 8.0:
-														tempoOcioso =  tempoOcioso + (8.0 -temp)
+											tempoGasto=tempoTarefa*propExecutada
 													
-												self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
-									
-										else:
-											if listaDias[equipe-1] < iinstancia.dias:
-												solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
-												temp = horaIni + tempoTarefa + iinstancia.tempoDeslocamento[0][talhao]
+											if listaDias[ativ-1] < iinstancia.dias:
+												if listaDias[ativ-1]+1< iinstancia.dias:
+													solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+													temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+													solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+													listaDias[ativ-1] = listaDias[ativ-1]+1		
+													horaIni= iinstancia.tempoDeslocamento[0][talhao]
+													propExecutada= 1- propExecutada		
+													tempoGasto=tempoTarefa-tempoGasto
+													solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+													temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+																	
+													#se  não há atividades a serem feitas pela mesma equipe ou se o tempo e os dias foram esgotados 
+													if (existe == False) or (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias) :
+														solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+														if temp < 8.0:
+															tempoOcioso =  tempoOcioso + (8.0 -temp)
+														elif (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias):
+															listaDias[ativ-1] = listaDias[ativ-1] + 1
+															
+													self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 														
+												else:
+													
+													solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+													temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+													solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+													listaDias[ativ-1]=listaDias[ativ-1]+1
+										
+										else:
+											if listaDias[ativ-1] < iinstancia.dias:
+												solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+												temp = horaIni + tempoTarefa + iinstancia.tempoDeslocamento[0][talhao]
+																
 												if existe==False:		#se  não há atividades a serem feitas pela mesma equipe
-													solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
+													solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
 													if temp < 8.0:
 														tempoOcioso =  tempoOcioso + (8.0 -temp)
 												self.tempoAtividade[ativ-1][1] = horaIni+ tempoTarefa
 								
-									else:
+								if listaDias[anterior2-1] < iinstancia.dias:
+									if ((self.tempoAtividade[anterior2-1][1]) > (self.tempoAtividade[anterior-1][1] + iinstancia.tempoDeslocamento[talhaoAnt][talhao]) and (listaDias[anterior-1]==listaDias[anterior2-1])) or (listaDias[anterior2-1] > listaDias[anterior-1]) :
+								 
+										if listaDias[anterior2-1] > listaDias[anterior-1]:
+											talhaoAnt = solucao[listaDias[anterior-1]][equipe-1][-1][0]
+											temp = self.tempoAtividade[anterior-1][1]+iinstancia.tempoDeslocamento[0][talhaoAnt]
+											solucao[listaDias[anterior-1]][equipe-1].append((0,None,temp,0))
+											if temp < 8.0:
+												tempoOcioso =  tempoOcioso + (8.0 -temp)
+										
+													
+										listaDias[ativ-1]= listaDias[anterior2-1]
 										self.tempoAtividade[ativ-1][0] = self.tempoAtividade[anterior2-1][1]
 										horaIni = self.tempoAtividade[ativ-1][0]
 										tempoChegada = self.tempoAtividade[anterior-1][1] + iinstancia.tempoDeslocamento[talhaoAnt][talhao]
 										tempoOcioso = tempoOcioso + max((self.tempoAtividade[anterior2-1][1]- tempoChegada),0)
-										
+												
 										if (horaIni + tempoTarefa) > (iinstancia.turno - iinstancia.tempoDeslocamento[0][talhao]):
 											propExecutada= (iinstancia.turno-iinstancia.tempoDeslocamento[0][talhao]-horaIni)/tempoTarefa
-											tempoGasto=((iinstancia.tamCliente[talhao]*iinstancia.tempoPadrao[ativ-1])/iinstancia.profEquipe[equipe-1])*propExecutada
-											solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-											temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
-											solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-											listaDias[equipe-1] = listaDias[equipe-1]+1	
-											if listaDias[equipe-1]< iinstancia.dias:		
-												horaIni= iinstancia.tempoDeslocamento[0][talhao]
-												propExecutada= 1- propExecutada		
-												tempoGasto=tempoTarefa-tempoGasto
-												solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
-												temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+											tempoGasto=tempoTarefa*propExecutada
+											if listaDias[ativ-1]< iinstancia.dias:
+												if listaDias[ativ-1]+1 < iinstancia.dias:
+													solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+													temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+													solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+													listaDias[ativ-1] = listaDias[ativ-1]+1	
+													horaIni= iinstancia.tempoDeslocamento[0][talhao]
+													propExecutada= 1- propExecutada		
+													tempoGasto=tempoTarefa-tempoGasto
+													solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,propExecutada))
+													temp =horaIni+tempoGasto+iinstancia.tempoDeslocamento[0][talhao]
+															
+													#se  não há atividades a serem feitas pela mesma equipe ou se o tempo e os dias foram esgotados 
+													if (existe == False) or (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias) :	
+															
+														solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+														if temp < 8.0:
+															tempoOcioso = tempoOcioso + (8.0-temp)
+																
+														elif (temp > 8.0 and listaDias[ativ-1]+1 >= iinstancia.dias):
+															listaDias[ativ-1] = listaDias[ativ-1] + 1
+													self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
 												
-														
-												if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
-													solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-													if temp < 8.0:
-														tempoOcioso = tempoOcioso + (8.0-temp)
-												self.tempoAtividade[ativ-1][1] = iinstancia.tempoDeslocamento[0][talhao] + tempoGasto
-										
+												else:
+													solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+													temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
+													solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+													listaDias[ativ-1]=listaDias[ativ-1]+1
 										else:
-											solucao[listaDias[equipe-1]][equipe-1].append((talhao,ativ,horaIni,1))
-											temp = horaIni + tempoTarefa + iinstancia.tempoDeslocamento[0][talhao]
-											
+											if listaDias[ativ-1]< iinstancia.dias:
+												solucao[listaDias[ativ-1]][equipe-1].append((talhao,ativ,horaIni,1))
+												self.tempoAtividade[ativ-1][1] = horaIni + tempoTarefa
+												temp =horaIni+tempoTarefa+iinstancia.tempoDeslocamento[0][talhao]
 													
-											if existe == False:		#se  não há atividades a serem feitas pela mesma equipe
-												solucao[listaDias[equipe-1]][equipe-1].append((0,None,temp,0))
-												if temp < 8.0:
-													tempoOcioso =  tempoOcioso + (8.0 -temp)
-												
-											self.tempoAtividade[ativ-1][1] = horaIni+tempoTarefa
-							
+												if existe == False :		#se  não há atividades a serem feitas pela mesma equipe
+													solucao[listaDias[ativ-1]][equipe-1].append((0,None,temp,0))
+													if temp < 8.0:
+														tempoOcioso = tempoOcioso + (8.0 - temp)
+						
 				
 			custoTotal = 0.0
 			tempoUltra = 0.0
