@@ -8,7 +8,7 @@ def main():
 	arq = open("arqX.txt","w")
 	objetoInstancia = Instancia.Instancia()
 	objetoInstancia.inputArq(arquivo)
-	objetoBRKGA = BRKGA()
+	objetoBRKGA = BRKGA(0.70, 0.10, 0.70)
 	resp = objetoBRKGA.BRKGA(objetoInstancia,arq)
 	arq.write(str(resp))
 	arquivo.close()
