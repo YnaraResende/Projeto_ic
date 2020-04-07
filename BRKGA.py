@@ -6,11 +6,11 @@ import time
 
 class BRKGA:
 	
-	def __init__(self):
+	def __init__(self, pe, pmuta, pcross):
 		
-		self.pe = 0.70			#probabilidade elite 
-		self.pmuta = 0.10		#probabilidade mutacao
-		self.pcross = 0.70		#probabilidade crossover
+		self.pe = pe			#probabilidade elite 
+		self.pmuta = pmuta		#probabilidade mutacao
+		self.pcross = pcross	#probabilidade crossover
 		self.resposta = None
 		
 	''' 	
