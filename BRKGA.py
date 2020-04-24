@@ -42,7 +42,7 @@ class BRKGA:
 						
 		while reini < 100 :
 				
-			if (fim - inicio) >= 120.00:
+			if (fim - inicio) >= 1800.00:
 				arq.write(str(self.resposta))
 				BRKGA.Fim(self)
 					
