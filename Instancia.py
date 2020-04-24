@@ -14,6 +14,7 @@ class Instancia:
 		self.profEquipe=[]				#lista que armazena proficiencia de cada equipe
 		self.custoEquipe=[]				#lista que armazena custo de cada equipe
 		self.tempoTarefa = []			#matriz que armazena o tempo de duração de cada tarefa para cada equipe
+		self.quant = []					#lista que armazena número de grupos de atividades das equipes
 		 	
 	'''
 	Parâmetros:
@@ -35,6 +36,10 @@ class Instancia:
 		linhaum = arquivo.readline()
 		espaco = linhaum.split()
 		self.equipes= int(espaco[1])
+		linhaum = arquivo.readline()
+		espaco = linhaum.split()
+		for j in range (1,self.equipes+1):
+			self.quant.append(int(espaco[j]))
 		linhaum = arquivo.readline()
 		espaco = linhaum.split()
 		self.turno= int(espaco[1])
@@ -114,4 +119,3 @@ class Instancia:
 				for j in range (0, self.equipes):
 					self.tempoTarefa[i-1][j]= (self.tamCliente[c+1]*self.tempoPadrao[i-1])/self.profEquipe[j]
 			
-
