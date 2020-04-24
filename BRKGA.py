@@ -42,9 +42,9 @@ class BRKGA:
 						
 		while reini < 100 :
 				
-			if (fim - inicio) >= (300.00):
+			if (fim - inicio) >= 120.00:
 				arq.write(str(self.resposta))
-				Fim()
+				BRKGA.Fim(self)
 					
 			novaPopulacao=[]		
 			equipes = []
@@ -89,7 +89,7 @@ class BRKGA:
 				custos = []				#lista que armazena custos dos vetores de atividades
 				
 				#a cada linha da matriz novaPopulacao preenche vetoraux com os numeros das atividades correspondentes
-				for i in range(len(novaPopulacao)):		
+				for i in range(0,len(novaPopulacao)):		
 					vetoraux=[]	
 					for j in range (0,n):
 						vetoraux.append(novaPopulacao[i][j])
@@ -97,12 +97,13 @@ class BRKGA:
 					
 					for j in range(0,n):
 						for b in range (0,n):
-							if vetoraux[j] == novaPopulacao[i][b]:
-								vetoraux[j]= b+1
+							if novaPopulacao[i][j] == vetoraux[b]:
+								vetoraux[b] = j+1
+								break
 					
 					#calcula custo da rota das equipes, baseado no numero de dias dado e na sequência de atividades	
 					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
-					custos.append(float(resul))		
+					custos.append(float(resul))	
 						
 				#para armazenar os indices dos vinte vetores de menores custos da populacao
 				while zis <= 20:		
@@ -120,8 +121,7 @@ class BRKGA:
 						if (custos[j] < men) and (ajuda==False):	
 							if zis == 1:
 								menor = custos[j]
-								vetorum = novaPopulacao[j]		#para retornar vetor atividade equivalente
-								#vetorajudaEquipe= equipes[j]		
+								vetorum = novaPopulacao[j]		#para retornar vetor atividade equivalente	
 							men = custos[j]	
 							indice = j
 												
@@ -129,7 +129,7 @@ class BRKGA:
 							if zis == 1:
 								menor = custos[j]
 								vetorum = novaPopulacao[j]		#para retornar vetor atividade equivalente
-								#vetorajudaEquipe= equipes[j]	
+									
 							men = custos[j]
 							indice = j
 							
@@ -199,23 +199,11 @@ class BRKGA:
 								vetoraux.append(proximaGeracao[i][j])
 							vetoraux=sorted(vetoraux)
 								
-							for j in range (0,n):
-								for b in range (j+1,n):
-									if proximaGeracao[i][j] == proximaGeracao[i][b]:
-										indicePrim = j
-										indiceSeg = b
-											
 							for j in range(0,n):
 								for b in range (0,n):
-									if vetoraux[j] == proximaGeracao[i][b]:
-										vetoraux[j]= b+1
-											
-							for a in range(0,len(vetoraux)):
-								for b in range(a+1,len(vetoraux)):
-									if a != b:
-										if vetoraux[a] == vetoraux[b]:
-												
-											vetoraux[b] = indiceSeg+1
+									if  proximaGeracao[i][j] == vetoraux[b]:
+										vetoraux[b] = j+1
+										break
 												
 							#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades 
 							resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
@@ -348,9 +336,10 @@ class BRKGA:
 						
 								for j in range(0,n):
 									for b in range (0,n):
-										if vetoraux[j] == proximaGeracao[i][b]:
-											vetoraux[j]= b+1
-									
+										if proximaGeracao[i][j] == vetoraux[b]:
+											vetoraux[b]= j+1
+											break
+					
 								#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades
 								resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)	
 								
@@ -384,8 +373,9 @@ class BRKGA:
 						
 					for j in range(0,n):
 						for b in range (0,n):
-							if vetoraux[j] == novaPopulacao[i][b]:
-								vetoraux[j]= b+1
+							if novaPopulacao[i][j] == vetoraux[b]:
+								vetoraux[b]= j+1
+								break
 					
 					#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades
 					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
@@ -393,28 +383,17 @@ class BRKGA:
 					#armazena o vetor da população atual com menor custo	
 					if (resul<m) or m == -1:	
 						m = resul
-						auxiliar = vetoraux
-						auxiliarEquipe = equipes[i]	
+							
 						
 				#se houve otimização do custo: atualiza o vetor de atividades e o menor custo 
 				if(m < menor):	
 					self.resposta = m
-					vetorResp= auxiliar
-					#vetorRespEquipe = auxiliarEquipe
 					
 				#se não: incrementa o contador para que satisfaça o critério de parada
 				else: 	
-					self.resposta = menor
-						
-					vetorResp=sorted(vetorum)
-					
-					for j in range(0,n):
-						for b in range (0,n):
-							if vetorResp[j] == vetorum[b]:
-								vetorResp[j]= b+1
-					#vetorRespEquipe = vetorajudaEquipe
+					self.resposta = menor		
 					contador= contador+1
-				
+			
 			#incrementa o contador para que satisfaça o critério de parada
 			reini=reini+1
 			
@@ -425,6 +404,4 @@ class BRKGA:
 			#atualização do tempo final 
 			fim = time.time()
 			
-				
-			return(self.resposta)		
-		
+		return(self.resposta)
