@@ -1,6 +1,7 @@
 Regioes(c/deposito): 3
 Atividades: 4
 Equipes: 2
+Grupos/equipe: 2 3
 Turno: 8
 Dias: 4
 Atividade_regioes:
@@ -11,7 +12,7 @@ Tempo_viagem_regioes:
 0.066 0.000 0.204
 0.149 0.204 0.000
 Tempo_padrao_atividades:
-7.000 9.000 10.000 10.000
+2.000 4.000 5.000 5.000
 Tamanho_cliente:
 -1 1.215 1.459
 Proficiencia_equipes:
