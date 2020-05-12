@@ -1,12 +1,8 @@
 Regioes(c/deposito): 3
 Atividades: 4
-Equipes: 2
-Grupos/equipe: 2 3
+Tipos_equipe: 2
 Turno: 8
 Dias: 4
-Atividade_regioes:
-1 1 4 -1
-2 2 3 -1
 Tempo_viagem_regioes: 
 0.000 0.066 0.149
 0.066 0.000 0.204
@@ -19,3 +15,5 @@ Proficiencia_equipes:
 1.000 2.000
 Custo_equipes:
 1.250 2.000
+Grupos/equipe: 2 3 
+Maximo_equipes: 5
