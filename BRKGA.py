@@ -2,6 +2,7 @@ from Rota import *
 from random import *
 from threading import Timer
 import time 
+from math import ceil
 
 
 class BRKGA:
@@ -35,14 +36,15 @@ class BRKGA:
 		
 		reini=0							#variável de controle 
 		k = iinstancia.equipes			#número de equipes
-		n = iinstancia.numAtividades	#número de atividades
+		n = iinstancia.numAtividades 	#número de atividades
 		fim = 0.0						#variável que controla fim da execução do programa
 		objetoRota = Rota(arq)			#criação de um objeto para acessar os métodos da classe Rota
 		inicio = time.time()			#determina tempo de início da execução da função
+		
 						
 		while reini < 100 :
 				
-			if (fim - inicio) >= 1800.00:
+			if (fim - inicio) >= 1800:
 				arq.write(str(self.resposta))
 				BRKGA.Fim(self)
 					
@@ -50,36 +52,187 @@ class BRKGA:
 			equipes = []
 			contador = 0	#variavel de controle
 			respAnterior = -1
+			matrizAux = []
 				
 			if self.resposta != None:
 				respAnterior = self.resposta
 					
-			for i in range (100):		#inicializa matriz novaPopulacao
+			for i in range (300):		#inicializa matriz novaPopulacao
 				lista=[]
 				for j in range(0,n):
 					lista.append(' ')
 				novaPopulacao.append(lista[:])
 			
 			#preenche matriz novaPopulacao com numeros reais de 0 a 1, que representam as atividades e consideram a precedência destas				
-			for i in range(100):		
+			for i in range(300):		
 				for c, v in iinstancia.atividades.items():
 					for ajuda in range (0, len(v)):
 						num = iinstancia.atividades[c][ajuda]
 						if ajuda == 0:
-							novaPopulacao[i][num-1] = random()
+							novaPopulacao[i][num-1] = random()		
 						else:
 							ant = iinstancia.atividades[c][ajuda-1]
 							maxi = 1 - novaPopulacao[i][ant-1]
 							aux = uniform(0.0000000000000001,maxi) 
 							novaPopulacao[i][num-1] = novaPopulacao[i][ant-1] + aux 
 				
-				lista=[]
+				lista=[]	#inicialização da lista que vai ser preenchida com as equipes referentes as atividades de cada lista da matriz novaPopulacao
+				for c in range(0,n):
+					lista.append('')
+			
+				listaDispo =[]	#lista que irá conter as atividades disponiveis (que ainda não foram destinadas a alguma equipe) 
+				for j in range (0,n):	#será equivalente ao vetor de atividades para facilitar o acesso à posição que a equipe deve estar na lista de equipes
+					listaDispo.append(novaPopulacao[i][j])
+				listaDispo=sorted(listaDispo)
+					
+				for j in range(0,n):
+					for b in range (0,iinstancia.numAtividades):
+						if novaPopulacao[i][j] == listaDispo[b]:
+							listaDispo[b] = j+1
+							break
+	
+				matrizAux = []	#matriz para simular a distribuição das atividades ao longo dos dias para cada grupo de equipes e facilitar o acesso aos dados
+				for c in range (iinstancia.dias):
+					listaum = []
+					for j in range (iinstancia.equipes):
+						lista2 = []
+						for z in range (iinstancia.quant[j]):
+							lista3 = []
+							lista2.append(lista3[:])
+						listaum.append(lista2[:])
+					matrizAux.append(listaum[:])
 				
-				#preenche matriz equipes de acordo com a equipe que corresponde a cada atividade da matriz novaPopulacao
-				for j in range(0, n):	
-					for z in range(1,k+1):
-						if (z/k > novaPopulacao[i][j]) and (novaPopulacao[i][j]>= (z-1)/k):
-							lista.append(z)
+				contDias = 0	#variavel para controlar o número de dias
+				while contDias < iinstancia.dias:
+					listaGT=[]	#lista que contem o número de grupos de trabalho já ocupados a cada dia
+					lim = False
+					
+					for c in range (iinstancia.equipes):
+						listaGT.append(0)
+					
+					for talhao in range (iinstancia.talhoes-1):
+						#verifica se o talhão já teve todas as suas atividades destinadas a equipes
+						ajuda = False
+						for a in listaDispo:
+							if a == iinstancia.atividades[talhao][len(iinstancia.atividades[talhao])-1]:
+								ajuda = True
+						if ajuda:
+							melhorCB = 0
+							
+							for z in range (iinstancia.equipes):
+								#verifica se alguma outra equipe possui grupos de trabalho disponíveis, assim se a aquipe atual não 
+								#possuir grupos de trabalhos disponíveis, mas outras equipes possuir, as outras equipes serão priorizadas 
+								for b in range(iinstancia.equipes):
+									if z != b:
+										if listaGT[b] < iinstancia.quant[b]:
+											lim = True
+								#se a equipe atual possui grupos de trabalho disponíveis ou se totas as equipes estão com seus grupos de
+								#trabalho ocupados
+								if (listaGT[z] < iinstancia.quant[z]) or (lim == False):
+									
+									for a in range (len(matrizAux[contDias][z])):
+										
+										CB =0
+										probExec =0.0
+										resto = iinstancia.turno -(iinstancia.tempoDeslocamento[0][talhao+1]+iinstancia.tempoDeslocamento[talhao+1][0])
+										for ativ in iinstancia.atividades[talhao]:
+											
+											#verifica se a atividade atual do talhão ainda está disponível
+											cont = False
+											for pos in range (0,len(listaDispo)):
+												if ativ == listaDispo[pos]:
+													cont = True
+													break
+											
+											if cont:
+												entrou = False
+												#se o grupo de trabalho atual deve finalizar alguma atividade que foi realizada parcialmente
+												if matrizAux[contDias][z][a] != [] and probExec == 0.0:
+													for b in iinstancia.atividades[talhao]:
+														if matrizAux[contDias][z][a][-1][0] == b:
+															entrou = True
+															break
+													#se essa atividade a ser finalizada for do mesmo talhão da atividade atual, se for, essa
+													#equipe e seu respectivo grupo de trabalho são priorizados
+													if entrou:
+														probExec = matrizAux[contDias][z][a][-1][1]
+														resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
+														if resto <= 0:
+															resto = 0
+													#se não, contabiliza além do tempo da atividade a ser finalizada o tempo de deslocamento
+													else:
+														continuar = True
+														for c,v in iinstancia.atividades.items():	
+															if continuar:	 
+																for k in range (0, len(v)):
+																	if iinstancia.atividades[c][k] == matrizAux[contDias][z][a][-1][0]:
+																		tal=c+1
+																		continuar = False
+																		break
+															else:
+																break
+														probExec = matrizAux[contDias][z][a][-1][1]
+														resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
+														resto = resto - iinstancia.tempoDeslocamento[tal][talhao]
+														if resto <= 0:
+															resto = 0
+														
+												#contabiliza a proporção executada das atividades 
+												if resto - iinstancia.tempoTarefa[ativ-1][z] >= 0:
+													resto = resto - iinstancia.tempoTarefa[ativ-1][z]
+													probExec = probExec + 1
+																			
+												elif resto == 0:
+													break
+																		
+												else:
+													probExec = probExec + resto/iinstancia.tempoTarefa[ativ-1][z]
+													ultAtiv = ativ
+													probUlt = resto/iinstancia.tempoTarefa[ativ-1][z]
+													break
+										#armareza custo beneficio de cada grupo de trabalho da equipe para posteriormente realizar a comparação
+										CB = iinstancia.custoEquipe[z]/probExec
+										if (CB < melhorCB) or (melhorCB == 0) or entrou:
+											melhorProbExec = probExec
+											melhorProbUlt = probUlt
+											melhorCB = CB
+											melhorEquipe = z
+											melhorGT = a
+											numAtivExec = ceil(melhorProbExec)
+											if entrou:
+												break
+								if entrou:
+									break
+							#o grupo de trabalho ocupado é contabilizado
+							listaGT[melhorEquipe]= listaGT[melhorEquipe]+1
+							#a lista da matriz matrizAux ocupada é deletada para evitar inconsistências					
+							del(matrizAux[contDias][melhorEquipe][melhorGT])
+							
+							#se a ultima atividade do talhão foi realizada parcialmente, o número da atividade e sua proporção que falta a ser realizada
+							#são armazenados na matrizAux no dia posterior 
+							if melhorProbExec != numAtivExec:
+								aj = -1
+								for aux in range (0,iinstancia.quant[melhorEquipe]):
+									if len(matrizAux[contDias+1][melhorEquipe][aux]) == 0:
+										aj=aux
+										break
+								matrizAux[contDias+1][melhorEquipe][aj].append((ultAtiv, (1- melhorProbUlt)))
+							
+							#as atividades realizadas são destinadas a sua equipe respectiva 
+							cont = 0		
+							for ativ in iinstancia.atividades[talhao]:
+								if cont < numAtivExec :
+									for pos in range (len(listaDispo)):
+									
+										if ativ == listaDispo[pos] and cont < numAtivExec :
+											cont = cont + 1								   
+											lista[pos] = melhorEquipe+1
+											listaDispo[pos] = None
+											break
+								else: 
+									break
+					#némero de dias é contabilizado
+					contDias = contDias+1 
 				equipes.append(lista[:])
 					
 			while contador < 100:
@@ -356,27 +509,168 @@ class BRKGA:
 					 
 				m = -1
 				for i in range(len(novaPopulacao)):		
-					lista=[]
-						
-					#preenche matriz equipes de acordo com a equipe que correponde a cada número real da atual matriz novaPopulacao
-					for j in range(0, n):	
-						for z in range(1,k+1):
-							if (z/k > novaPopulacao[i][j]) and (novaPopulacao[i][j]>= (z-1)/k):
-								lista.append(z)
-					equipes.append(lista[:])
-					
-					vetoraux=[]	
-					#a cada linha da matriz novaPopulacao preenche vetoraux com os números das atividades correspondentes	
-					for j in range (0,n):		
-						vetoraux.append(novaPopulacao[i][j])	
-					vetoraux=sorted(vetoraux)				
+					lista=[]	#inicialização da lista que vai ser preenchida com as equipes referentes as atividades de cada lista da matriz novaPopulacao
+					for c in range(0,n):
+						lista.append('')
+			
+					listaDispo =[]	#lista que irá conter as atividades disponiveis (que ainda não foram destinadas a alguma equipe) 
+					for j in range (0,n):	#será equivalente ao vetor de atividades para facilitar o acesso à posição que a equipe deve estar na lista de equipes
+						listaDispo.append(novaPopulacao[i][j])
+					listaDispo=sorted(listaDispo)
 						
 					for j in range(0,n):
-						for b in range (0,n):
-							if novaPopulacao[i][j] == vetoraux[b]:
-								vetoraux[b]= j+1
+						for b in range (0,iinstancia.numAtividades):
+							if novaPopulacao[i][j] == listaDispo[b]:
+								listaDispo[b] = j+1
 								break
+
+					vetoraux=[]
+					for c in range(0,n):
+						vetoraux.append(listaDispo[c])
 					
+					matrizAux = []	#matriz para simular a distribuição das atividades ao longo dos dias para cada grupo de equipes e facilitar o acesso aos dados
+					for c in range (iinstancia.dias):
+						listaum = []
+						for j in range (iinstancia.equipes):
+							lista2 = []
+							for z in range (iinstancia.quant[j]):
+								lista3 = []
+								lista2.append(lista3[:])
+							listaum.append(lista2[:])
+						matrizAux.append(listaum[:])
+				
+					contDias = 0	#variavel para controlar o número de dias
+					while contDias < iinstancia.dias:
+						listaGT=[]	#lista que contem o número de grupos de trabalho já ocupados a cada dia
+						lim = False
+						
+						for c in range (iinstancia.equipes):
+							listaGT.append(0)
+						
+						for talhao in range (iinstancia.talhoes-1):
+							#verifica se o talhão já teve todas as suas atividades destinadas a equipes
+							ajuda = False
+							for a in listaDispo:
+								if a == iinstancia.atividades[talhao][len(iinstancia.atividades[talhao])-1]:
+									ajuda = True
+							if ajuda:
+								melhorCB = 0
+								
+								for z in range (iinstancia.equipes):
+									#verifica se alguma outra equipe possui grupos de trabalho disponíveis, assim se a aquipe atual não 
+									#possuir grupos de trabalhos disponíveis, mas outras equipes possuir, as outras equipes serão priorizadas 
+									for b in range(iinstancia.equipes):
+										if z != b:
+											if listaGT[b] < iinstancia.quant[b]:
+												lim = True
+									#se a equipe atual possui grupos de trabalho disponíveis ou se totas as equipes estão com seus grupos de
+									#trabalho ocupados
+									if (listaGT[z] < iinstancia.quant[z]) or (lim == False):
+										
+										for a in range (len(matrizAux[contDias][z])):
+											
+											CB =0
+											probExec =0.0
+											resto = iinstancia.turno -(iinstancia.tempoDeslocamento[0][talhao+1]+iinstancia.tempoDeslocamento[talhao+1][0])
+											for ativ in iinstancia.atividades[talhao]:
+												
+												#verifica se a atividade atual do talhão ainda está disponível
+												cont = False
+												for pos in range (0,len(listaDispo)):
+													if ativ == listaDispo[pos]:
+														cont = True
+														break
+												
+												if cont:
+													entrou = False
+													#se o grupo de trabalho atual deve finalizar alguma atividade que foi realizada parcialmente
+													if matrizAux[contDias][z][a] != [] and probExec == 0.0:
+														for b in iinstancia.atividades[talhao]:
+															if matrizAux[contDias][z][a][-1][0] == b:
+																entrou = True
+																break
+														#se essa atividade a ser finalizada for do mesmo talhão da atividade atual, se for, essa
+														#equipe e seu respectivo grupo de trabalho são priorizados
+														if entrou:
+															probExec = matrizAux[contDias][z][a][-1][1]
+															resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
+															if resto <= 0:
+																resto = 0
+														#se não, contabiliza além do tempo da atividade a ser finalizada o tempo de deslocamento
+														else:
+															continuar = True
+															for c,v in iinstancia.atividades.items():	
+																if continuar:	 
+																	for k in range (0, len(v)):
+																		if iinstancia.atividades[c][k] == matrizAux[contDias][z][a][-1][0]:
+																			tal=c+1
+																			continuar = False
+																			break
+																else:
+																	break
+															probExec = matrizAux[contDias][z][a][-1][1]
+															resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
+															resto = resto - iinstancia.tempoDeslocamento[tal][talhao]
+															if resto <= 0:
+																resto = 0
+															
+													#contabiliza a proporção executada das atividades 
+													if resto - iinstancia.tempoTarefa[ativ-1][z] >= 0:
+														resto = resto - iinstancia.tempoTarefa[ativ-1][z]
+														probExec = probExec + 1
+																				
+													elif resto == 0:
+														break
+																			
+													else:
+														probExec = probExec + resto/iinstancia.tempoTarefa[ativ-1][z]
+														ultAtiv = ativ
+														probUlt = resto/iinstancia.tempoTarefa[ativ-1][z]
+														break
+											#armareza custo beneficio de cada grupo de trabalho da equipe para posteriormente realizar a comparação
+											CB = iinstancia.custoEquipe[z]/probExec
+											if (CB < melhorCB) or (melhorCB == 0) or entrou:
+												melhorProbExec = probExec
+												melhorProbUlt = probUlt
+												melhorCB = CB
+												melhorEquipe = z
+												melhorGT = a
+												numAtivExec = ceil(melhorProbExec)
+												if entrou:
+													break
+									if entrou:
+										break
+								#o grupo de trabalho ocupado é contabilizado
+								listaGT[melhorEquipe]= listaGT[melhorEquipe]+1
+								#a lista da matriz matrizAux ocupada é deletada para evitar inconsistências					
+								del(matrizAux[contDias][melhorEquipe][melhorGT])
+								
+								#se a ultima atividade do talhão foi realizada parcialmente, o número da atividade e sua proporção que falta a ser realizada
+								#são armazenados na matrizAux no dia posterior 
+								if melhorProbExec != numAtivExec:
+									aj = -1
+									for aux in range (0,iinstancia.quant[melhorEquipe]):
+										if len(matrizAux[contDias+1][melhorEquipe][aux]) == 0:
+											aj=aux
+											break
+									matrizAux[contDias+1][melhorEquipe][aj].append((ultAtiv, (1- melhorProbUlt)))
+								
+								#as atividades realizadas são destinadas a sua equipe respectiva 
+								cont = 0		
+								for ativ in iinstancia.atividades[talhao]:
+									if cont < numAtivExec :
+										for pos in range (len(listaDispo)):
+										
+											if ativ == listaDispo[pos] and cont < numAtivExec :
+												cont = cont + 1								   
+												lista[pos] = melhorEquipe+1
+												listaDispo[pos] = None
+												break
+									else: 
+										break
+						#número de dias é contabilizado
+						contDias = contDias+1 
+					equipes.append(lista[:])
 					#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades
 					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
 					
@@ -403,5 +697,5 @@ class BRKGA:
 			
 			#atualização do tempo final 
 			fim = time.time()
-			
+		
 		return(self.resposta)
