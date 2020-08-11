@@ -10,6 +10,7 @@ def main():
 	objetoInstancia.inputArq(arquivo)
 	objetoBRKGA = BRKGA(0.70, 0.10, 0.70)
 	resp = objetoBRKGA.BRKGA(objetoInstancia,arq)
+	print(resp)
 	arq.write(str(resp))
 	arquivo.close()
 	arq.close()
