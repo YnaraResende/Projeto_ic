@@ -1,9 +1,9 @@
 from Rota import *
-from random import *
-from threading import Timer
-import time 
+import random
+import time
+import timeit
 from math import ceil
-
+from heapq import heappush, heappop
 
 class BRKGA:
 	
@@ -13,23 +13,236 @@ class BRKGA:
 		self.pmuta = pmuta		#probabilidade mutacao
 		self.pcross = pcross	#probabilidade crossover
 		self.resposta = None
-		
-	''' 	
-	Ideia: Quando chamada, a função termina o programa.
-		
-	'''
-	def Fim(self):
-		exit()
+		self.menor = None
+		self.solucaoFinal = None
 	
 	'''
 	Parâmetros:
-		iinstancia- objeto da classe Instancia
-		arq- arquivo de saída de dados, utilizado para gravar a resposta
+		iinstancia - objeto da classe Instancia
+		listaAux - lista de atividades
 			
-	Ideia: a função retorna o menor custo dentre todas as listas de sequências de atividades e suas respetivas equipes. Primeiramente é formada uma 
-	matriz de números reais para representar as atividades e uma matriz para suas respectivas equipes. Assim, as listas de atividades da matriz são 
-	decodificadas e enviadas com sua lista de equipes para a função CalcularRota, para dar inicio a uma nova população, os piores custos são substituídos
-	por vetores de atividades gerados pela reprodução e mutação.
+	Ideia: a função retorna a lista de equipes e grupos de trabalho que devem ser destinadas as atividades, a equipe com a menor relação 
+	custo/proficiencia possui prioridade, após o estabelecimento da lista de equipes por meio do método construtivo, pode haver troca de 
+	equipes visando maior variabilidade e diminuição do custo da solução.
+		
+	'''
+	def GRASP(self, iinstancia, listaAux):
+		
+		#Para facilitar o acesso aos dados
+		equipes = iinstancia.equipes
+		talhoes = iinstancia.talhoes-1
+		ativs = iinstancia.atividades
+		tempoTarefa = iinstancia.tempoTarefa
+		tempoViagem = iinstancia.tempoDeslocamento
+		
+		lista=[]	#lista que será preenchida com as equipes das atividades da listaAux
+		for c in range(0, iinstancia.numAtividades):
+			lista.append('')
+			
+		tipoTime = []	#lista que armazena as equipes de forma crecente em relação ao menor custo/proficiencia
+		for k in range(1, equipes+1):
+		   tipoTime.append(k)
+		
+		tipoTime.sort(key = lambda x: iinstancia.custoEquipe[x-1]/iinstancia.profEquipe[x-1])
+		
+		numTime = 0
+		
+		while True:
+			
+			dia = 0
+			eq = tipoTime[numTime]
+			
+			numGT = iinstancia.quant[eq-1]	#número de grupos de trabalho da equipe
+			
+			disponivel = {(v+1, ativs[v][0]) for v in range (talhoes)}	#conjunto com todas as atividades disponíveis
+			
+			solucao = []
+			estrutura = []	#armazena em cada dia, custo das equipes X o numero de vezes que as equipes foram utilizadas
+			
+			#estrutura que armazena para cada grupo de trabalho as atividades pendentes
+			pendente = [(None, None) for k in range (numGT)]
+			
+			#quanto falta para que a atividade seja terminada
+			frac = {(v+1, a):1 for v in range(talhoes) for a in ativs[v]}
+		
+			inacabadas = set()	#conjunto que armazenas as atividades que não foram terminadas
+		
+			while disponivel or inacabadas:
+				
+				#armazena o ultimo grupo de trabalho que foi destinado para cada talhão
+				quantgt = [None for k in range (talhoes)]
+				
+				#armazena as rotas traçadas
+				solucao.append( [[(0, None, 0, 0)] for k in range(numGT)] )
+					
+				estrutura.append([0 for k in range (equipes)])
+				
+				#tupla formada por (grupo de trabalho, equipe, talhao, atividade e tempo de conclusão da atividade)
+				eventos = [(t, eq, 0, None, 0) for t in range(numGT)]
+				
+				while eventos:
+					
+					(t, k, v, a, q) = heappop(eventos)
+					
+					#caso a atividade tenha sido concluida, a próxima do talhão fica disponível
+					if (v, a) != (0, None) and a+1 < (ativs[v-1][0] + iinstancia.ativTalhao):
+						disponivel.add((v, a+1))
+					
+					#funções para estabelecer tempos de inicio e fim da atividade
+					inicio = lambda h, b: q + tempoViagem[ solucao[dia][t][-1][0] ][h]
+					
+					fim = lambda h, b: inicio(h, b)+ tempoTarefa[b-1][k-1]*frac[(h,b)]
+					
+					#caso o grupo de trabalho possua atividades pendentes 
+					pend = False
+					if pendente[t] != (None, None):
+						v, a = pendente[t]
+						quantgt[v-1] = t
+						pend = True
+						
+					else:
+						
+						#escolha da atividade a ser feita
+						if disponivel:
+							aux = []
+							for (u, w) in disponivel:
+								aux.append((u, w))
+							
+							if len( disponivel ) != 1:
+								aux.sort(key = lambda x: iinstancia.tempoTarefa[(x[-1])-1][eq-1])
+								num = ceil( 0.4*len( disponivel ))
+								aux = aux[:num] if(num>2) else aux[:2]
+								(tal,ativ)  = random.choice(aux)
+								
+							else:
+								ativ = w
+								tal = u
+																		
+							while True:
+								
+								#caso a atividade não possa ser realizada pelo grupo de trabalho em questão
+								if (t != quantgt[tal-1] and quantgt[tal-1] != None) or (inicio(tal, ativ) + tempoViagem[tal][0]> iinstancia.turno):
+										
+									if len(aux) == 1 :
+										ativ = None
+										break
+									
+									else:
+										(tal, ativ) = random.choice(aux)
+										aux.remove((tal, ativ))
+								else:
+									break 
+							
+							#a atividade escolhida não está mais disponível		
+							if ativ != None:
+								for (u, w) in disponivel:
+									
+									if ativ == w:
+										v, a = (u, w)
+										quantgt[v-1] = t
+										disponivel.remove((v, a))
+										break
+					
+							
+					if ((u, w) != (0, None) and (v, a) != (0, None)) or pend:
+						(u, w) = (0, None)
+						# se a atividade não pode ser terminada
+						if fim(v, a)+ tempoViagem[v][0] > iinstancia.turno: 
+							T= iinstancia.turno - tempoViagem[v][0] - inicio(v, a)
+							f= T/tempoTarefa[a-1][k-1]
+							frac[(v, a)] = frac[(v, a)] - f
+							pendente[t] = (v, a)
+							inacabadas.add((v, a))
+							solucao[-1][t].append((v, a, inicio(v,a), f))  
+							solucao[-1][t].append((0, None, iinstancia.turno, 0))
+						
+						#se a atividade foi terminada	
+						else:
+							pendente[t] = None, None
+							if (v,a) in inacabadas:
+								inacabadas.remove((v,a))
+								
+							for itera in range(0, len(listaAux)):
+								if listaAux[itera] == a:
+									lista[itera] = (k, t)
+									
+							heappush(eventos, (t, k, v, a, fim(v, a)))
+							solucao[-1][t].append((v, a, inicio(v, a), frac[(v, a)]))
+							
+					
+				dia= dia+1	
+			
+			maior = 0
+			if len(solucao) <= iinstancia.dias:
+				
+				for j in range(len(solucao)):
+					soma = 0
+					for k, rota in enumerate(solucao[j]):
+						if len(rota)> 1:
+							estrutura[j][eq-1] = estrutura[j][eq-1] + iinstancia.custoEquipe[eq-1]
+					for k in range (equipes):
+						soma = soma + estrutura[j][k]
+						if soma > maior:
+							maior = soma
+							numDia = j			
+				break
+				
+			elif numTime < equipes:
+				numTime = numTime + 1
+			
+			else:
+				print("Solução Inválida")
+			
+		menCusto = 0
+		#analisa para todos os grupos de trabalho do dia com maior custo, se há outro grupo de trabalho relativo a uma outra equipe
+		#com custo menor, que consiga realizar as atividades no mesmo período de tempo, para que ocorra a troca de equipes
+		for g, r in enumerate (solucao[numDia]):
+			if len(r) > 1 and r[1][-1] == 1 and r[-1][-1] == 1:
+				for e in tipoTime: 
+					tempo = 0
+					errado = False
+					aj = ceil(estrutura[numDia][e-1]/iinstancia.custoEquipe[e-1])
+					if (aj < iinstancia.quant[e-1]):
+						for (v, a, ini, f) in r:
+							if a != None:
+								tempo = tempo + tempoViagem[r[-1][0]][v] 
+
+								if tempo + tempoTarefa[a-1][e-1] + tempoViagem[v][0] > iinstancia.turno:
+									errado = True
+									break
+								else:
+									tempo = tempo + tempoTarefa[a-1][e-1]
+									
+						if errado == False:
+							if menCusto == 0 or iinstancia.custoEquipe[e-1] < menCusto:
+								menCusto = iinstancia.custoEquipe[e-1]
+								respEq= e
+								respGp = aj
+							
+				if menCusto != 0:
+					for (v, a, ini, f) in r:
+						if a != 0:
+							for itera in range(0, len(listaAux)):
+								if listaAux[itera] == a:
+									if respEq != lista[itera][0]:
+										lista[itera] = (respEq, respGp)
+										break
+									else:
+										break
+		
+		
+		return lista
+
+	
+	'''
+	Parâmetros:
+		iinstancia - objeto da classe Instancia
+		arq - arquivo de saída de dados, utilizado para gravar a resposta
+			
+	Ideia: a função retorna o menor custo em relação as rotas criadas pela função CalcularRota. Há a criação de populações por meio de números reais, 
+		que são decodificados em atividades, a lista de atividades gerada é enviada para a função GRASP, que retorna uma lista formada por equipes e
+		seus respectivos de grupos de trabalho. Para dar inicio a uma nova população, as listas de atividades relacionadas aos piores custos são 
+		substituídas por novas listas geradas pela reprodução e mutação.
 		
 	'''
 	def BRKGA(self,iinstancia,arq):
@@ -41,208 +254,67 @@ class BRKGA:
 		objetoRota = Rota(arq)			#criação de um objeto para acessar os métodos da classe Rota
 		inicio = time.time()			#determina tempo de início da execução da função
 		
-						
+		#o critério de parada é estabelecido por 1000 iterações ou 30 minutos				
 		while reini < 100 :
+			
+			if (fim - inicio) >= 120:
+				return self.solucaoFinal, self.resposta
 				
-			if (fim - inicio) >= 1800:
-				arq.write(str(self.resposta))
-				BRKGA.Fim(self)
-					
+			#inicialização das variáveis e estrturas		
 			novaPopulacao=[]		
 			equipes = []
-			contador = 0	#variavel de controle
+			contador = 0		
 			respAnterior = -1
 			matrizAux = []
 				
 			if self.resposta != None:
 				respAnterior = self.resposta
 					
-			for i in range (300):		#inicializa matriz novaPopulacao
+			for i in range (100):		
 				lista=[]
 				for j in range(0,n):
 					lista.append(' ')
 				novaPopulacao.append(lista[:])
 			
-			#preenche matriz novaPopulacao com numeros reais de 0 a 1, que representam as atividades e consideram a precedência destas				
-			for i in range(300):		
+			#preenche matriz novaPopulacao com numeros reais de 0 a 1, que representam as atividades, considerando a ordem de precedência				
+			for i in range(100):		
 				for c, v in iinstancia.atividades.items():
 					for ajuda in range (0, len(v)):
 						num = iinstancia.atividades[c][ajuda]
 						if ajuda == 0:
-							novaPopulacao[i][num-1] = random()		
+							novaPopulacao[i][num-1] = random.random()		
 						else:
 							ant = iinstancia.atividades[c][ajuda-1]
 							maxi = 1 - novaPopulacao[i][ant-1]
-							aux = uniform(0.0000000000000001,maxi) 
+							aux = random.uniform(0.0000000000000001,maxi) 
 							novaPopulacao[i][num-1] = novaPopulacao[i][ant-1] + aux 
 				
-				lista=[]	#inicialização da lista que vai ser preenchida com as equipes referentes as atividades de cada lista da matriz novaPopulacao
-				for c in range(0,n):
-					lista.append('')
-			
-				listaDispo =[]	#lista que irá conter as atividades disponiveis (que ainda não foram destinadas a alguma equipe) 
-				for j in range (0,n):	#será equivalente ao vetor de atividades para facilitar o acesso à posição que a equipe deve estar na lista de equipes
-					listaDispo.append(novaPopulacao[i][j])
-				listaDispo=sorted(listaDispo)
+				#decodificação das atividades
+				listaAux =[]	 
+				for j in range (0,n):	
+					listaAux.append(novaPopulacao[i][j])
+				listaAux=sorted(listaAux)
 					
 				for j in range(0,n):
 					for b in range (0,iinstancia.numAtividades):
-						if novaPopulacao[i][j] == listaDispo[b]:
-							listaDispo[b] = j+1
+						if novaPopulacao[i][j] == listaAux[b]:
+							listaAux[b] = j+1
 							break
-	
-				matrizAux = []	#matriz para simular a distribuição das atividades ao longo dos dias para cada grupo de equipes e facilitar o acesso aos dados
-				for c in range (iinstancia.dias):
-					listaum = []
-					for j in range (iinstancia.equipes):
-						lista2 = []
-						for z in range (iinstancia.quant[j]):
-							lista3 = []
-							lista2.append(lista3[:])
-						listaum.append(lista2[:])
-					matrizAux.append(listaum[:])
 				
-				contDias = 0	#variavel para controlar o número de dias
-				while contDias < iinstancia.dias:
-					listaGT=[]	#lista que contem o número de grupos de trabalho já ocupados a cada dia
-					lim = False
-					
-					for c in range (iinstancia.equipes):
-						listaGT.append(0)
-					
-					for talhao in range (iinstancia.talhoes-1):
-						#verifica se o talhão já teve todas as suas atividades destinadas a equipes
-						ajuda = False
-						for a in listaDispo:
-							if a == iinstancia.atividades[talhao][len(iinstancia.atividades[talhao])-1]:
-								ajuda = True
-						if ajuda:
-							melhorCB = 0
-							
-							for z in range (iinstancia.equipes):
-								#verifica se alguma outra equipe possui grupos de trabalho disponíveis, assim se a aquipe atual não 
-								#possuir grupos de trabalhos disponíveis, mas outras equipes possuir, as outras equipes serão priorizadas 
-								for b in range(iinstancia.equipes):
-									if z != b:
-										if listaGT[b] < iinstancia.quant[b]:
-											lim = True
-								#se a equipe atual possui grupos de trabalho disponíveis ou se totas as equipes estão com seus grupos de
-								#trabalho ocupados
-								if (listaGT[z] < iinstancia.quant[z]) or (lim == False):
-									
-									for a in range (len(matrizAux[contDias][z])):
-										
-										CB =0
-										probExec =0.0
-										resto = iinstancia.turno -(iinstancia.tempoDeslocamento[0][talhao+1]+iinstancia.tempoDeslocamento[talhao+1][0])
-										for ativ in iinstancia.atividades[talhao]:
-											
-											#verifica se a atividade atual do talhão ainda está disponível
-											cont = False
-											for pos in range (0,len(listaDispo)):
-												if ativ == listaDispo[pos]:
-													cont = True
-													break
-											
-											if cont:
-												entrou = False
-												#se o grupo de trabalho atual deve finalizar alguma atividade que foi realizada parcialmente
-												if matrizAux[contDias][z][a] != [] and probExec == 0.0:
-													for b in iinstancia.atividades[talhao]:
-														if matrizAux[contDias][z][a][-1][0] == b:
-															entrou = True
-															break
-													#se essa atividade a ser finalizada for do mesmo talhão da atividade atual, se for, essa
-													#equipe e seu respectivo grupo de trabalho são priorizados
-													if entrou:
-														probExec = matrizAux[contDias][z][a][-1][1]
-														resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
-														if resto <= 0:
-															resto = 0
-													#se não, contabiliza além do tempo da atividade a ser finalizada o tempo de deslocamento
-													else:
-														continuar = True
-														for c,v in iinstancia.atividades.items():	
-															if continuar:	 
-																for k in range (0, len(v)):
-																	if iinstancia.atividades[c][k] == matrizAux[contDias][z][a][-1][0]:
-																		tal=c+1
-																		continuar = False
-																		break
-															else:
-																break
-														probExec = matrizAux[contDias][z][a][-1][1]
-														resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
-														resto = resto - iinstancia.tempoDeslocamento[tal][talhao]
-														if resto <= 0:
-															resto = 0
-														
-												#contabiliza a proporção executada das atividades 
-												if resto - iinstancia.tempoTarefa[ativ-1][z] >= 0:
-													resto = resto - iinstancia.tempoTarefa[ativ-1][z]
-													probExec = probExec + 1
-																			
-												elif resto == 0:
-													break
-																		
-												else:
-													probExec = probExec + resto/iinstancia.tempoTarefa[ativ-1][z]
-													ultAtiv = ativ
-													probUlt = resto/iinstancia.tempoTarefa[ativ-1][z]
-													break
-										#armareza custo beneficio de cada grupo de trabalho da equipe para posteriormente realizar a comparação
-										CB = iinstancia.custoEquipe[z]/probExec
-										if (CB < melhorCB) or (melhorCB == 0) or entrou:
-											melhorProbExec = probExec
-											melhorProbUlt = probUlt
-											melhorCB = CB
-											melhorEquipe = z
-											melhorGT = a
-											numAtivExec = ceil(melhorProbExec)
-											if entrou:
-												break
-								if entrou:
-									break
-							#o grupo de trabalho ocupado é contabilizado
-							listaGT[melhorEquipe]= listaGT[melhorEquipe]+1
-							#a lista da matriz matrizAux ocupada é deletada para evitar inconsistências					
-							del(matrizAux[contDias][melhorEquipe][melhorGT])
-							
-							#se a ultima atividade do talhão foi realizada parcialmente, o número da atividade e sua proporção que falta a ser realizada
-							#são armazenados na matrizAux no dia posterior 
-							if melhorProbExec != numAtivExec:
-								aj = -1
-								for aux in range (0,iinstancia.quant[melhorEquipe]):
-									if len(matrizAux[contDias+1][melhorEquipe][aux]) == 0:
-										aj=aux
-										break
-								matrizAux[contDias+1][melhorEquipe][aj].append((ultAtiv, (1- melhorProbUlt)))
-							
-							#as atividades realizadas são destinadas a sua equipe respectiva 
-							cont = 0		
-							for ativ in iinstancia.atividades[talhao]:
-								if cont < numAtivExec :
-									for pos in range (len(listaDispo)):
-									
-										if ativ == listaDispo[pos] and cont < numAtivExec :
-											cont = cont + 1								   
-											lista[pos] = melhorEquipe+1
-											listaDispo[pos] = None
-											break
-								else: 
-									break
-					#némero de dias é contabilizado
-					contDias = contDias+1 
+				#formação da lista de equipes e grupos de trabalho			
+				lista = BRKGA.GRASP(self,iinstancia, listaAux)
 				equipes.append(lista[:])
-					
+			
 			while contador < 100:
+				
 				zis = 1
 				indiceElite = []		#armazena indices das linhas correspondentes aos vetores com menores custos 	
 				indiceNaoElite = []		#armazena indices das linhas correspondentes aos vetores restantes
 				custos = []				#lista que armazena custos dos vetores de atividades
 				
-				#a cada linha da matriz novaPopulacao preenche vetoraux com os numeros das atividades correspondentes
-				for i in range(0,len(novaPopulacao)):		
+				#decodificação das atividades
+				for i in range(0,len(novaPopulacao)):
+							
 					vetoraux=[]	
 					for j in range (0,n):
 						vetoraux.append(novaPopulacao[i][j])
@@ -254,81 +326,67 @@ class BRKGA:
 								vetoraux[b] = j+1
 								break
 					
-					#calcula custo da rota das equipes, baseado no numero de dias dado e na sequência de atividades	
-					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
-					custos.append(float(resul))	
-						
-				#para armazenar os indices dos vinte vetores de menores custos da populacao
-				while zis <= 20:		
-						
-					men= -1.0
-						
+					#calcula e armazena os custos das rotas 	
+					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)
+					
+					custos.append((resul[0], resul[-1]))	
+				
+				#armazena os indices dos vinte vetores de menores custos da populacao
+				while zis <= 20:
+							
+					men = -1
+					indice = 0
 					#percorre a lista custos armazenando o menor custo, garantindo que nao se repita indice de menor custo
 					for j in range(len(custos)):
-						ajuda = False
 						
-						for a in indiceElite:		
-							if j == a:
-								ajuda = True
-												
-						if (custos[j] < men) and (ajuda==False):	
-							if zis == 1:
-								menor = custos[j]
-								vetorum = novaPopulacao[j]		#para retornar vetor atividade equivalente	
-							men = custos[j]	
-							indice = j
-												
-						elif (men == -1) and (ajuda==False):
-							if zis == 1:
-								menor = custos[j]
-								vetorum = novaPopulacao[j]		#para retornar vetor atividade equivalente
+						if j not in indiceElite:
+													
+							if custos[j][-1] < men or men == -1:
 									
-							men = custos[j]
-							indice = j
+								if zis == 1:
+									self.menor = custos[j][-1]
+									self.solucaoFinal = custos[j][0]
+								men = custos[j][-1]
+								indice = j
 							
 					indiceElite.append(indice)
 					zis = zis+1	
-					
+				
 				#armazena os indices dos vetores de atividades que não tiveram os menores custos 
 				for i in range(len(novaPopulacao)):
-					ajuda = False
 						
-					for j in indiceElite:
-						if i == j:
-							ajuda = True 
-								
-					if ajuda == False:
+					if i not in indiceElite:
 						indiceNaoElite.append(i)
-						
+					
 				proximaGeracao=[]
 				proximaGeracao= novaPopulacao		#proximaGeracao recebe as atividades da novaPopulacao
 				vetorProbabilidade=[]
 				
 				for b in range(0,n):
-					vetorProbabilidade.append(random())	#geração de vetorProbabilidade com números gerados aleatoriamente 
+					vetorProbabilidade.append(random.random())	#geração de vetorProbabilidade com números gerados aleatoriamente 
 						
 				for i in range(70):									
-												
+								
 					#escolha de pais originados de um vetor elite e outro não elite
-					paium = choice(indiceElite)
-					paidois = choice(indiceNaoElite)
+					paium = random.choice(indiceElite)
+					paidois = random.choice(indiceNaoElite)
 					
 					#geração de um número real aleatório para definir se os pais são aptos a reprodução			
-					rand = random()
+					rand = random.random()
 						
 					if rand <= self.pcross:		#se forem aptos a reproducao
 						
 						vetorFilho = []
 						
-						#para cada número real aleatório relativo à atividade no vetor dos pais
+						#criação do vetorFilho baseado nos valores dos vetores pais 
 						for j in range (0,n):				
-							if vetorProbabilidade[j] <= self.pe: #se o número for menor que a probabilidade elite, recebe o valor do pai elite
+							if vetorProbabilidade[j] <= self.pe: 
 								vetorFilho.append(novaPopulacao[paium][j])
 					
-							else: #se não, recebe o valor do pai não elite
+							else: 
 								vetorFilho.append(novaPopulacao[paidois][j])
 									
-						#reorganizando a formação do vetor filho, respeitando a ordem de precedência	
+						#reorganização do vetor filho, com base na ordem de precedência	
 						for c, v in iinstancia.atividades.items():		
 							for ajuda in range (0, len(v)):
 								if ajuda != 0:
@@ -339,12 +397,12 @@ class BRKGA:
 											vetorFilho[num-1] = vetorFilho[num-1] + vetorFilho[ant-1]
 										else:	
 											maxi = 1-vetorFilho[ant-1]
-											aux = uniform(0.0000000000000001,maxi) 
+											aux = random.uniform(0.0000000000000001,maxi) 
 											vetorFilho[num-1]= vetorFilho[ant-1]+aux
 												
 						maior = -1
 							
-						#percorre toda a população garantindo que não haja decodificação de atividades iguais
+						#decodificação das atividades
 						for i in range(len(proximaGeracao)):
 							vetoraux=[]	
 									
@@ -358,29 +416,29 @@ class BRKGA:
 										vetoraux[b] = j+1
 										break
 												
-							#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades 
-							resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
+							#calculo dos custos das rotas
+							sol, resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
 							
 							#armazena o índice do vetor de atividades de pior custo	
 							if resul > maior:
 								maior = resul
 								indicemaior=i
-							
+								
 						#substituicao do vetor de atividades de pior custo com o vetor filho gerado pela reprodução
-						for i in range(0,n):
-							proximaGeracao[indicemaior][i]=vetorFilho[i]
+						proximaGeracao[indicemaior] = vetorFilho
 						
-						#geração de um número real aleatório para definir se o vetor filho é apto a mutação	
-						rand = random()
+							
+						rand = random.random()
 									
-						if rand <= self.pmuta:	#se for apto a mutação
+						if rand <= self.pmuta:	#se o vetor filho for apto a mutação
 							controle = 0
 								
-							#são trocadas de posição duas atividades de talhões diferentes, que respeitem a ordem de precedência após a troca 
+							#permutação de duas atividades de talhões diferentes, respeitando a ordem de precedência 
 							while controle == 0:
+								
 								primeira = 1
-								indum = randint(0,(n-1))
-								inddois= randint(0,(n-1))
+								indum = random.randint(0,(n-1))
+								inddois= random.randint(0,(n-1))
 									
 								talhaoum = -1
 								talhaodois = -1
@@ -479,10 +537,11 @@ class BRKGA:
 									
 							maior = -1
 								
-							#vetor filho após mutação substitui o vetor de atividades de pior custo da população
+							#substituição do vetor de atividades de pior custo da população pelo vetor filho mutado
 							for i in range(len(proximaGeracao)):
+								
 								vetoraux=[]	
-									
+								
 								for j in range (0,n):
 									vetoraux.append(proximaGeracao[i][j])
 								vetoraux=sorted(vetoraux)
@@ -492,16 +551,16 @@ class BRKGA:
 										if proximaGeracao[i][j] == vetoraux[b]:
 											vetoraux[b]= j+1
 											break
-					
-								#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades
-								resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)	
+								
+								#calculo do custo das rotas 
+								sol, resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)	
 								
 								if resul > maior:
 									maior = resul
 									indicemaior=i
-									
-							for i in range(0,n):
-								proximaGeracao[indicemaior][i]=vetorFilho[i]
+							
+							proximaGeracao[indicemaior]=vetorFilho
+				
 								
 				novaPopulacao=[]
 				novaPopulacao = proximaGeracao			#proximaGeracao vira a novaPopulação para a próxima iteração 
@@ -509,183 +568,45 @@ class BRKGA:
 					 
 				m = -1
 				for i in range(len(novaPopulacao)):		
-					lista=[]	#inicialização da lista que vai ser preenchida com as equipes referentes as atividades de cada lista da matriz novaPopulacao
+					
+					lista=[]	
 					for c in range(0,n):
 						lista.append('')
-			
-					listaDispo =[]	#lista que irá conter as atividades disponiveis (que ainda não foram destinadas a alguma equipe) 
-					for j in range (0,n):	#será equivalente ao vetor de atividades para facilitar o acesso à posição que a equipe deve estar na lista de equipes
-						listaDispo.append(novaPopulacao[i][j])
-					listaDispo=sorted(listaDispo)
+					
+					#decodificação de equipes
+					listaAux =[]	 
+					for j in range (0,n):	
+						listaAux.append(novaPopulacao[i][j])
+					listaAux=sorted(listaAux)
 						
 					for j in range(0,n):
 						for b in range (0,iinstancia.numAtividades):
-							if novaPopulacao[i][j] == listaDispo[b]:
-								listaDispo[b] = j+1
+							if novaPopulacao[i][j] == listaAux[b]:
+								listaAux[b] = j+1
 								break
 
 					vetoraux=[]
 					for c in range(0,n):
-						vetoraux.append(listaDispo[c])
+						vetoraux.append(listaAux[c])
 					
-					matrizAux = []	#matriz para simular a distribuição das atividades ao longo dos dias para cada grupo de equipes e facilitar o acesso aos dados
-					for c in range (iinstancia.dias):
-						listaum = []
-						for j in range (iinstancia.equipes):
-							lista2 = []
-							for z in range (iinstancia.quant[j]):
-								lista3 = []
-								lista2.append(lista3[:])
-							listaum.append(lista2[:])
-						matrizAux.append(listaum[:])
-				
-					contDias = 0	#variavel para controlar o número de dias
-					while contDias < iinstancia.dias:
-						listaGT=[]	#lista que contem o número de grupos de trabalho já ocupados a cada dia
-						lim = False
-						
-						for c in range (iinstancia.equipes):
-							listaGT.append(0)
-						
-						for talhao in range (iinstancia.talhoes-1):
-							#verifica se o talhão já teve todas as suas atividades destinadas a equipes
-							ajuda = False
-							for a in listaDispo:
-								if a == iinstancia.atividades[talhao][len(iinstancia.atividades[talhao])-1]:
-									ajuda = True
-							if ajuda:
-								melhorCB = 0
-								
-								for z in range (iinstancia.equipes):
-									#verifica se alguma outra equipe possui grupos de trabalho disponíveis, assim se a aquipe atual não 
-									#possuir grupos de trabalhos disponíveis, mas outras equipes possuir, as outras equipes serão priorizadas 
-									for b in range(iinstancia.equipes):
-										if z != b:
-											if listaGT[b] < iinstancia.quant[b]:
-												lim = True
-									#se a equipe atual possui grupos de trabalho disponíveis ou se totas as equipes estão com seus grupos de
-									#trabalho ocupados
-									if (listaGT[z] < iinstancia.quant[z]) or (lim == False):
-										
-										for a in range (len(matrizAux[contDias][z])):
-											
-											CB =0
-											probExec =0.0
-											resto = iinstancia.turno -(iinstancia.tempoDeslocamento[0][talhao+1]+iinstancia.tempoDeslocamento[talhao+1][0])
-											for ativ in iinstancia.atividades[talhao]:
-												
-												#verifica se a atividade atual do talhão ainda está disponível
-												cont = False
-												for pos in range (0,len(listaDispo)):
-													if ativ == listaDispo[pos]:
-														cont = True
-														break
-												
-												if cont:
-													entrou = False
-													#se o grupo de trabalho atual deve finalizar alguma atividade que foi realizada parcialmente
-													if matrizAux[contDias][z][a] != [] and probExec == 0.0:
-														for b in iinstancia.atividades[talhao]:
-															if matrizAux[contDias][z][a][-1][0] == b:
-																entrou = True
-																break
-														#se essa atividade a ser finalizada for do mesmo talhão da atividade atual, se for, essa
-														#equipe e seu respectivo grupo de trabalho são priorizados
-														if entrou:
-															probExec = matrizAux[contDias][z][a][-1][1]
-															resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
-															if resto <= 0:
-																resto = 0
-														#se não, contabiliza além do tempo da atividade a ser finalizada o tempo de deslocamento
-														else:
-															continuar = True
-															for c,v in iinstancia.atividades.items():	
-																if continuar:	 
-																	for k in range (0, len(v)):
-																		if iinstancia.atividades[c][k] == matrizAux[contDias][z][a][-1][0]:
-																			tal=c+1
-																			continuar = False
-																			break
-																else:
-																	break
-															probExec = matrizAux[contDias][z][a][-1][1]
-															resto = resto - (probExec* iinstancia.tempoTarefa[(matrizAux[contDias][z][a][-1][0])-1][z])
-															resto = resto - iinstancia.tempoDeslocamento[tal][talhao]
-															if resto <= 0:
-																resto = 0
-															
-													#contabiliza a proporção executada das atividades 
-													if resto - iinstancia.tempoTarefa[ativ-1][z] >= 0:
-														resto = resto - iinstancia.tempoTarefa[ativ-1][z]
-														probExec = probExec + 1
-																				
-													elif resto == 0:
-														break
-																			
-													else:
-														probExec = probExec + resto/iinstancia.tempoTarefa[ativ-1][z]
-														ultAtiv = ativ
-														probUlt = resto/iinstancia.tempoTarefa[ativ-1][z]
-														break
-											#armareza custo beneficio de cada grupo de trabalho da equipe para posteriormente realizar a comparação
-											CB = iinstancia.custoEquipe[z]/probExec
-											if (CB < melhorCB) or (melhorCB == 0) or entrou:
-												melhorProbExec = probExec
-												melhorProbUlt = probUlt
-												melhorCB = CB
-												melhorEquipe = z
-												melhorGT = a
-												numAtivExec = ceil(melhorProbExec)
-												if entrou:
-													break
-									if entrou:
-										break
-								#o grupo de trabalho ocupado é contabilizado
-								listaGT[melhorEquipe]= listaGT[melhorEquipe]+1
-								#a lista da matriz matrizAux ocupada é deletada para evitar inconsistências					
-								del(matrizAux[contDias][melhorEquipe][melhorGT])
-								
-								#se a ultima atividade do talhão foi realizada parcialmente, o número da atividade e sua proporção que falta a ser realizada
-								#são armazenados na matrizAux no dia posterior 
-								if melhorProbExec != numAtivExec:
-									aj = -1
-									for aux in range (0,iinstancia.quant[melhorEquipe]):
-										if len(matrizAux[contDias+1][melhorEquipe][aux]) == 0:
-											aj=aux
-											break
-									matrizAux[contDias+1][melhorEquipe][aj].append((ultAtiv, (1- melhorProbUlt)))
-								
-								#as atividades realizadas são destinadas a sua equipe respectiva 
-								cont = 0		
-								for ativ in iinstancia.atividades[talhao]:
-									if cont < numAtivExec :
-										for pos in range (len(listaDispo)):
-										
-											if ativ == listaDispo[pos] and cont < numAtivExec :
-												cont = cont + 1								   
-												lista[pos] = melhorEquipe+1
-												listaDispo[pos] = None
-												break
-									else: 
-										break
-						#número de dias é contabilizado
-						contDias = contDias+1 
+					lista = BRKGA.GRASP(self,iinstancia, listaAux) 
 					equipes.append(lista[:])
-					#calcula custo da rota das equipes de acordo com número de dias dado e com a sequência de atividades
-					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
+					#calculo do custos das rotas 
+					sol, resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
 					
 					#armazena o vetor da população atual com menor custo	
-					if (resul<m) or m == -1:	
+					if (resul < m) or m == -1:	
 						m = resul
-							
+						menorSolucao = sol
 						
-				#se houve otimização do custo: atualiza o vetor de atividades e o menor custo 
-				if(m < menor):	
+				#se houve otimização do custo, há atualização da resposta 
+				if(m < self.menor):	
 					self.resposta = m
+					self.solucaoFinal = menorSolucao
 					
-				#se não: incrementa o contador para que satisfaça o critério de parada
+				#se não, há o incremento o contador que satisfaz o critério de parada
 				else: 	
-					self.resposta = menor		
+					self.resposta = self.menor		
 					contador= contador+1
 			
 			#incrementa o contador para que satisfaça o critério de parada
@@ -698,4 +619,4 @@ class BRKGA:
 			#atualização do tempo final 
 			fim = time.time()
 		
-		return(self.resposta)
+		return self.resposta, self.solucaoFinal
