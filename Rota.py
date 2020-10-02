@@ -78,8 +78,8 @@ class  Rota:
 			
 		while listaux or inacabadas:
 			
-			#armazena o ultimo grupo de trabalho que foi destinado para cada talhão
-			quantgt = [None for k in range (talhoes)]	
+			#armazena o ultimo grupo de trabalho e equipe que foi destinado para cada talhão no mesmo dia
+			quantgt = [(None, None) for k in range (talhoes)]	
 			
 			#lista que armazena tuplas formadas por (equipe, grupo de trabalho, talhao, atividade e tempo de conclusão da atividade)
 			eventos= []	
@@ -90,7 +90,7 @@ class  Rota:
 			while eventos:
 					
 				(eq, gr, v, a, q) = eventos.pop(0)
-					
+				
 				#funções para estabelecer tempos de inicio e fim da atividade			
 				inicio = lambda h, b: q + tempoViagem[ self.solucao[dia][eq-1][gr][-1][0] ][h]	
 				fim = lambda h, b: inicio(h, b)+ (tempoTarefa[b-1][eq-1]*frac[(h,b)])
@@ -100,7 +100,7 @@ class  Rota:
 				if (pendente[eq-1][gr][0] != None) and (pendente[eq-1][gr][1] != None):
 					v = pendente[eq-1][gr][0]
 					a = pendente[eq-1][gr][1]
-					quantgt[v-1] = gr
+					quantgt[v-1] = (gr, eq-1)
 					pend = True
 							
 				else:
@@ -120,6 +120,8 @@ class  Rota:
 											t = c
 											aux = i
 											continuar = False
+											if aux != 0:
+												ant = atividades[t][aux-1]
 											break
 								else:
 									break
@@ -127,66 +129,84 @@ class  Rota:
 							continuar = True
 							if aux != 0:
 								for at in listaux:
-									if at == atividades[t][aux-1]:
+									if at == ant: 
+										continuar = False
+										
+								for at in inacabadas:
+									if at[-1] == ant:
 										continuar = False
 							
+							if continuar == True:
+								if (inicio(t+1, ativ) + tempoViagem[t+1][0] )> iinstancia.turno:
+									continuar = False
+									
 							entrou = False		
-							if (gr == quantgt[t] or quantgt[t] == None) and continuar == True:
+							if (((gr, eq-1) == quantgt[t] and self.solucao[dia][eq-1][gr][-1][1] == ant )or (quantgt[t] == (None, None))) and continuar == True:
 								v = t+1
 								a = ativ
 								equipesaux.pop(z)
 								listaux.pop(z)
-								quantgt[t] = gr
+								quantgt[t] = (gr, eq-1)
 								entrou = True
 								break
-								
-				if ((v, a) != (0, None) and entrou == True)or pend :
+							
+				if ((v, a) != (0, None) and entrou == True) or pend :
 					entrou = False
 					
+					tempoFim = fim(v, a)
+					tempoInicio = inicio(v, a)
+					
 					#se a atividade foi terminada
-					if fim(v, a)+ tempoViagem[v][0] <= iinstancia.turno:
+					if tempoFim + tempoViagem[v][0] <= iinstancia.turno:
 						pendente[eq-1][gr][0] = None
 						pendente[eq-1][gr][1] = None
+						
 						if (v,a) in inacabadas:
 							inacabadas.remove((v,a))
-						eventos.append((eq, gr, v, a, fim(v, a)))
-						self.solucao[dia][eq-1][gr].append((v, a, inicio(v, a), frac[(v, a)]))
-						temp = fim(v, a)+ tempoViagem[v][0]
+						
+						eventos.append((eq, gr, v, a, tempoFim))
+						self.solucao[dia][eq-1][gr].append((v, a, tempoInicio, frac[(v, a)]))
+						temp = tempoFim + tempoViagem[v][0]
 						
 						if (not listaux) and (not inacabadas):
 							tempoOcioso = tempoOcioso + (iinstancia.turno - temp)
 							self.solucao[dia][eq-1][gr].append((0, None, temp, 0))
 							break
+						
 						else:
 							for i in range (len(vetoraux)):
 								if a == vetoraux[i]:
-									if equipes[i] not in equipes[i+1:]:
+									if equipes[i] not in equipesaux : 
 										tempoOcioso = tempoOcioso + (iinstancia.turno - temp)
 										self.solucao[dia][eq-1][gr].append((0, None, temp, 0))
+									break
+							
 					# se a atividade não pode ser terminada, mas é o ultimo dia disponível
-					elif (fim(v, a)+ tempoViagem[v][0] > iinstancia.turno) and (dia == iinstancia.dias-1):
+					elif (tempoFim + tempoViagem[v][0] > iinstancia.turno) and (dia == iinstancia.dias-1):
 						
-						self.solucao[dia][eq-1][gr].append((v, a, inicio(v, a), frac[(v, a)]))
-						self.solucao[dia][eq-1][gr].append((0, None, fim(v, a)+ tempoViagem[v][0], 0))
+						temp = tempoFim + tempoViagem[v][0]
+						self.solucao[dia][eq-1][gr].append((v, a, tempoInicio, frac[(v, a)]))
+						self.solucao[dia][eq-1][gr].append((0, None, temp, 0))
 						
 					# se a atividade não pode ser terminada
 					else: 
-								
-						T= iinstancia.turno - tempoViagem[v][0] - inicio(v, a)
+							
+						T= iinstancia.turno - tempoViagem[v][0] - tempoInicio
 						f= T/tempoTarefa[a-1][eq-1]
 						frac[(v, a)] = frac[(v, a)] - f
 						pendente[eq-1][gr][0] = v
 						pendente[eq-1][gr][1] = a
 						inacabadas.add((v, a))
-						self.solucao[dia][eq-1][gr].append((v, a, inicio(v,a), f))  
+						self.solucao[dia][eq-1][gr].append((v, a, tempoInicio, f))  
 						self.solucao[dia][eq-1][gr].append((0, None, iinstancia.turno, 0))
 				
 				else:
 					entrou = False				
 			dia = dia +1
 			#caso alguma atividade não tenha sido realizada ou completada
-			if (dia == iinstancia.dias) and (listaux or inacabadas):
-				custoTotal= custoTotal + 5.0
+			if (dia == iinstancia.dias) and (listaux or inacabadas) :
+				for a in listaux:
+					custoTotal= custoTotal + 5.0
 				break
 		
 			 
@@ -196,11 +216,18 @@ class  Rota:
 			if j > maiorCusto:
 				maiorCusto = j
 		penalidade = 3 * maiorCusto						
-
+		
 		for dia in range(len(self.solucao)):
+			
 			for equi in range(len(self.solucao[dia])):
 				for cont in range (len(self.solucao[dia][equi])):
 					if(len(self.solucao[dia][equi][cont])>1):	
+					
+						if self.solucao[dia][equi][cont][-1][1] != None:
+			
+							temp = self.solucao[dia][equi][cont][-1][2] + (self.solucao[dia][equi][cont][-1][-1] * tempoTarefa[ (self.solucao[dia][equi][cont][-1][1])-1 ][equi]) + tempoViagem[ self.solucao[dia][equi][cont][-1][0] ][0]
+							tempoOcioso = tempoOcioso + (iinstancia.turno - temp)
+							self.solucao[dia][equi][cont].append((0, None, temp, 0))	
 						tempoUltra= tempoUltra + max(((self.solucao[dia][equi][cont][-1][2]) - iinstancia.turno),0)
 						custoTotal= custoTotal + iinstancia.custoEquipe[equi] 
 		custoTotal= custoTotal + (tempoUltra * penalidade) + tempoOcioso
