@@ -42,14 +42,15 @@ class BRKGA:
 		tipoTime = []	#lista que armazena as equipes de forma crecente em relação ao menor custo/proficiencia
 		for k in range(1, equipes+1):
 		   tipoTime.append(k)
-		
+	
 		tipoTime.sort(key = lambda x: iinstancia.custoEquipe[x-1]/iinstancia.profEquipe[x-1])
 		
 		numTime = 0
-		
+
 		while True:
 			
 			dia = 0
+			
 			eq = tipoTime[numTime]
 			
 			numGT = iinstancia.quant[eq-1]	#número de grupos de trabalho da equipe
@@ -74,7 +75,7 @@ class BRKGA:
 				
 				#armazena as rotas traçadas
 				solucao.append( [[(0, None, 0, 0)] for k in range(numGT)] )
-					
+				
 				estrutura.append([0 for k in range (equipes)])
 				
 				#tupla formada por (grupo de trabalho, equipe, talhao, atividade e tempo de conclusão da atividade)
@@ -90,7 +91,6 @@ class BRKGA:
 					
 					#funções para estabelecer tempos de inicio e fim da atividade
 					inicio = lambda h, b: q + tempoViagem[ solucao[dia][t][-1][0] ][h]
-					
 					fim = lambda h, b: inicio(h, b)+ tempoTarefa[b-1][k-1]*frac[(h,b)]
 					
 					#caso o grupo de trabalho possua atividades pendentes 
@@ -121,7 +121,7 @@ class BRKGA:
 							while True:
 								
 								#caso a atividade não possa ser realizada pelo grupo de trabalho em questão
-								if (t != quantgt[tal-1] and quantgt[tal-1] != None) or (inicio(tal, ativ) + tempoViagem[tal][0]> iinstancia.turno):
+								if (t != quantgt[tal-1] and quantgt[tal-1] != None)  or (t == quantgt[tal-1] and solucao[-1][t][-1][1] != ativ-1) or (inicio(tal, ativ) + tempoViagem[tal][0]> iinstancia.turno):
 										
 									if len(aux) == 1 :
 										ativ = None
@@ -130,6 +130,7 @@ class BRKGA:
 									else:
 										(tal, ativ) = random.choice(aux)
 										aux.remove((tal, ativ))
+										
 								else:
 									break 
 							
@@ -144,20 +145,11 @@ class BRKGA:
 										break
 					
 							
-					if ((u, w) != (0, None) and (v, a) != (0, None)) or pend:
+					if ((u, w) != (0, None) and (v, a) != (0, None) and ativ!= None) or pend:
 						(u, w) = (0, None)
-						# se a atividade não pode ser terminada
-						if fim(v, a)+ tempoViagem[v][0] > iinstancia.turno: 
-							T= iinstancia.turno - tempoViagem[v][0] - inicio(v, a)
-							f= T/tempoTarefa[a-1][k-1]
-							frac[(v, a)] = frac[(v, a)] - f
-							pendente[t] = (v, a)
-							inacabadas.add((v, a))
-							solucao[-1][t].append((v, a, inicio(v,a), f))  
-							solucao[-1][t].append((0, None, iinstancia.turno, 0))
+						ativ = None
 						
-						#se a atividade foi terminada	
-						else:
+						if fim(v, a)+ tempoViagem[v][0] <= iinstancia.turno:
 							pendente[t] = None, None
 							if (v,a) in inacabadas:
 								inacabadas.remove((v,a))
@@ -169,11 +161,24 @@ class BRKGA:
 							heappush(eventos, (t, k, v, a, fim(v, a)))
 							solucao[-1][t].append((v, a, inicio(v, a), frac[(v, a)]))
 							
+						else:
+							T= iinstancia.turno - tempoViagem[v][0] - inicio(v, a)
+							f= T/tempoTarefa[a-1][k-1]
+							frac[(v, a)] = frac[(v, a)] - f
+							pendente[t] = (v, a)
+							inacabadas.add((v, a))
+							solucao[-1][t].append((v, a, inicio(v,a), f))  
+							solucao[-1][t].append((0, None, iinstancia.turno, 0))	
 					
 				dia= dia+1	
 			
 			maior = 0
-			if len(solucao) <= iinstancia.dias:
+		
+			if len(solucao) > iinstancia.dias and numTime < (equipes-1):
+				
+				numTime = numTime + 1
+			
+			elif len(solucao) <= iinstancia.dias:
 				
 				for j in range(len(solucao)):
 					soma = 0
@@ -187,49 +192,46 @@ class BRKGA:
 							numDia = j			
 				break
 				
-			elif numTime < equipes:
-				numTime = numTime + 1
-			
 			else:
-				print("Solução Inválida")
-			
-		menCusto = 0
-		#analisa para todos os grupos de trabalho do dia com maior custo, se há outro grupo de trabalho relativo a uma outra equipe
-		#com custo menor, que consiga realizar as atividades no mesmo período de tempo, para que ocorra a troca de equipes
-		for g, r in enumerate (solucao[numDia]):
-			if len(r) > 1 and r[1][-1] == 1 and r[-1][-1] == 1:
-				for e in tipoTime: 
-					tempo = 0
-					errado = False
-					aj = ceil(estrutura[numDia][e-1]/iinstancia.custoEquipe[e-1])
-					if (aj < iinstancia.quant[e-1]):
-						for (v, a, ini, f) in r:
-							if a != None:
-								tempo = tempo + tempoViagem[r[-1][0]][v] 
+				break
+		
+		if 	len(solucao) <= iinstancia.dias:
+			menCusto = 0
+			#analisa para todos os grupos de trabalho do dia com maior custo, se há outro grupo de trabalho relativo a uma outra equipe
+			#com custo menor, que consiga realizar as atividades no mesmo período de tempo, para que ocorra a troca de equipes
+			for g, r in enumerate (solucao[numDia]):
+				if len(r) > 1 and r[1][-1] == 1 and r[-1][-1] == 1:
+					for e in tipoTime: 
+						tempo = 0
+						errado = False
+						aj = ceil(estrutura[numDia][e-1]/iinstancia.custoEquipe[e-1])
+						if (aj < iinstancia.quant[e-1]):
+							for (v, a, ini, f) in r:
+								if a != None:
+									tempo = tempo + tempoViagem[r[-1][0]][v] 
 
-								if tempo + tempoTarefa[a-1][e-1] + tempoViagem[v][0] > iinstancia.turno:
-									errado = True
-									break
-								else:
-									tempo = tempo + tempoTarefa[a-1][e-1]
-									
-						if errado == False:
-							if menCusto == 0 or iinstancia.custoEquipe[e-1] < menCusto:
-								menCusto = iinstancia.custoEquipe[e-1]
-								respEq= e
-								respGp = aj
-							
-				if menCusto != 0:
-					for (v, a, ini, f) in r:
-						if a != 0:
-							for itera in range(0, len(listaAux)):
-								if listaAux[itera] == a:
-									if respEq != lista[itera][0]:
-										lista[itera] = (respEq, respGp)
+									if tempo + tempoTarefa[a-1][e-1] + tempoViagem[v][0] > iinstancia.turno:
+										errado = True
 										break
 									else:
-										break
-		
+										tempo = tempo + tempoTarefa[a-1][e-1]
+										
+							if errado == False:
+								if menCusto == 0 or iinstancia.custoEquipe[e-1] < menCusto:
+									menCusto = iinstancia.custoEquipe[e-1]
+									respEq= e
+									respGp = aj
+								
+					if menCusto != 0:
+						for (v, a, ini, f) in r:
+							if a != 0:
+								for itera in range(0, len(listaAux)):
+									if listaAux[itera] == a:
+										if respEq != lista[itera][0]:
+											lista[itera] = (respEq, respGp)
+											break
+										else:
+											break
 		
 		return lista
 
@@ -257,7 +259,8 @@ class BRKGA:
 		#o critério de parada é estabelecido por 1000 iterações ou 30 minutos				
 		while reini < 100 :
 			
-			if (fim - inicio) >= 120:
+			if (fim - inicio) >= 1200:
+				print("Tempo de execução: ", fim - inicio)
 				return self.solucaoFinal, self.resposta
 				
 			#inicialização das variáveis e estrturas		
@@ -267,8 +270,9 @@ class BRKGA:
 			respAnterior = -1
 			matrizAux = []
 				
-			if self.resposta != None:
+			if self.resposta != None and self.solucaoFinal != None:
 				respAnterior = self.resposta
+				solucaoAnterior = self.solucaoFinal
 					
 			for i in range (100):		
 				lista=[]
@@ -327,15 +331,15 @@ class BRKGA:
 								break
 					
 					#calcula e armazena os custos das rotas 	
-					resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)
+					sol, resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)
 					
-					custos.append((resul[0], resul[-1]))	
+					custos.append((sol, resul))	
 				
 				#armazena os indices dos vinte vetores de menores custos da populacao
 				while zis <= 20:
 							
 					men = -1
-					indice = 0
+					#indice = 0
 					#percorre a lista custos armazenando o menor custo, garantindo que nao se repita indice de menor custo
 					for j in range(len(custos)):
 						
@@ -417,8 +421,8 @@ class BRKGA:
 										break
 												
 							#calculo dos custos das rotas
-							sol, resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)		
-							
+							sol, resul = objetoRota.CalcularRota(iinstancia,vetoraux,equipes[i],iinstancia.dias)
+									
 							#armazena o índice do vetor de atividades de pior custo	
 							if resul > maior:
 								maior = resul
@@ -426,8 +430,6 @@ class BRKGA:
 								
 						#substituicao do vetor de atividades de pior custo com o vetor filho gerado pela reprodução
 						proximaGeracao[indicemaior] = vetorFilho
-						
-							
 						rand = random.random()
 									
 						if rand <= self.pmuta:	#se o vetor filho for apto a mutação
@@ -615,8 +617,10 @@ class BRKGA:
 			#comparar o self.resposta
 			if (respAnterior!= -1) and (respAnterior < self.resposta):	
 				self.resposta = respAnterior
+				self.solucaoFinal = solucaoAnterior
 			
 			#atualização do tempo final 
 			fim = time.time()
 		
-		return self.resposta, self.solucaoFinal
+		print("Tempo de execução: ", fim - inicio)
+		return self.resposta, self.solucaoFinal	
