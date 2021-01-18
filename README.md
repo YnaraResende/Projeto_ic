@@ -1,1 +1,1 @@
-# Projeto_ic
+# Projeto de Iniciação Científica
