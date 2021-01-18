@@ -1,1 +1,2 @@
-# Projeto de Iniciação Científica
+# Problema de Roteamento de Veículos Multiperíodo com Dependências entre Requisições
+Este projeto aborda um problema de roteamento de veículos multiperíodo com dependências entre requisições das atividades (PRVDLR), que devem ser executadas por equipes de trabalho heterogêneas quanto ao desempenho na realização das tarefas. O objetivo consiste em desenvolver um algoritmo eficiente que realize a designação das atividades às equipes, respeitando suas dependências, minimizando o número de dias necessários para a finalização das atividades propostas e visando colaborações na área de pesquisa operacional.
