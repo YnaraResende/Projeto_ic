@@ -256,7 +256,7 @@ class BRKGA:
 		objetoRota = Rota(arq)			#criação de um objeto para acessar os métodos da classe Rota
 		inicio = time.time()			#determina tempo de início da execução da função
 		
-		#o critério de parada é estabelecido por 1000 iterações ou 30 minutos				
+		#o critério de parada é estabelecido por 10000 iterações ou 20 minutos				
 		while reini < 100 :
 			
 			if (fim - inicio) >= 1200:
